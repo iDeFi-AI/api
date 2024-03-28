@@ -1,10 +1,8 @@
 import os
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify  # Import Flask and related modules only once
 import firebase_admin
 from firebase_admin import credentials, db, auth
-from generate_token import generate_token  # Import the generate_token function
-from get_api_key import get_api_key
 
 app = Flask(__name__)
 
@@ -64,12 +62,23 @@ def get_all_tokens():
 # Endpoint for generating API token
 @app.route('/api/generate_token', methods=['POST'])
 def generate_user_token():
-    return generate_token()
+    try:
+        data = request.json
+        uid = data.get('uid')
+        if not uid:
+            return jsonify({'error': 'UID required'}), 400
+
+        custom_token = auth.create_custom_token(uid)
+        token = custom_token.decode('utf-8')
+    
+        return jsonify({'token': token}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Endpoint for getting API key
 @app.route('/api/get_api_key', methods=['GET'])
 def get_api_key():
-    return get_api_key()
+    return jsonify({'api_key': 'your_api_key_here'})
 
 # Protected API endpoint (requires authentication)
 @app.route('/api/protected_endpoint', methods=['GET'])
