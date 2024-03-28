@@ -1,7 +1,9 @@
+/* Global styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Custom styles */
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
@@ -16,12 +18,109 @@
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+@font-face {
+  font-family: 'Goldman';
+  src: url('Goldman-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }
+
+h2, h3, p {
+  margin-bottom: 1.5rem; /* Adjust as needed */
+}
+
+html, body {
+  padding: 0;
+  margin: 0;
+  font-family: 'Goldman', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  line-height: 1.6;
+  font-size: 18px;
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+}
+
+#App\:Footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #000000; /* Set your desired background color */
+  padding: 10px; /* Adjust padding as needed */
+  box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.1); /* Optional: Add shadow for visual effect */
+}
+
+/* styles.css */
+
+/* Main Container */
+.main-container {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Navigation Container */
+.nav-container {
+  width: 200px; /* Adjust width as needed */
+  background-color: #000;
+  border-right: 3px solid #ddd; /* Border line on the right */
+  height: 100vh; /* Height 100% of viewport */
+  overflow-y: auto;
+  cursor: pointer; /* Allow scrolling if content exceeds height */
+}
+
+/* Navigation Item */
+.nav-container ul li {
+  padding: 10px; /* Adjust padding as needed */
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+  border-radius: 2.5px; /* Add color transition */
+}
+
+/* Highlight on Hover */
+.nav-container ul li:hover {
+  background-color: #000;
+  color: #fff; /* Change text color on hover */
+}
+
+
+/* Highlight on Selection */
+.nav-container ul li.active {
+  background-color: #fff;
+  color: #000;
+  width: 100%; /* Adjust selection color as needed */
+}
+
+/* Even Vertical Spacing */
+.nav-container ul {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 75%; /* Occupy full height of nav-container */
+}
+
+/* Content Container */
+.content-container {
+  flex: 1;
+  padding: 20px;
+}
+
+/* Code Container */
+.code-container {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  padding: 20px;
+  margin-bottom: 20px; /* Add some space between code snippets */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Responsive Code Snippet */
+.code-snippet {
+  font-size: 14px; /* Adjust font size as needed */
+  line-height: 1.5; /* Adjust line height as needed */
+  word-wrap: break-word;
+}
+
