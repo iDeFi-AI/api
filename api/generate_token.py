@@ -1,6 +1,5 @@
 from flask import request, jsonify
 from firebase_admin import auth
-import firebase_admin
 
 # Endpoint for generating API token
 def generate_token():
