@@ -216,35 +216,18 @@ export default function Page() {
                 </div>
               </div>
             );                                
-      case 7:
-        return (
-          <div>
-            <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
-            <p>
-              Here are some examples showcasing how to use our API in real-world scenarios.
-            </p>
-            <div className="example-container">
-              <div className="example bg-gray-200 rounded p-4">
-                <h3 className="text-lg text-black font-bold mb-2">Example 1: Black (No Access)</h3>
-                <p className="text-black">
-                  In this example, we'll demonstrate how to check a wallet's status using Python, cURL, and JavaScript.
-                  This example showcases the scenario where the wallet is blacklisted, resulting in no access.
+          case 7:
+            return (
+              <div>
+              <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
+                <p>
+                  Here's an example demonstrating how to upload a file to our API endpoint using cURL.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                  <SyntaxHighlighter language="python" style={docco} className="code-snippet rounded">
-                    {getCodeSnippetForItem({ id: 4, label: 'Python' })}
-                  </SyntaxHighlighter>
-                  <SyntaxHighlighter language="bash" style={docco} className="code-snippet rounded">
-                    {getCodeSnippetForItem({ id: 5, label: 'cURL' })}
-                  </SyntaxHighlighter>
-                  <SyntaxHighlighter language="javascript" style={docco} className="code-snippet rounded">
-                    {getCodeSnippetForItem({ id: 6, label: 'JavaScript' })}
-                  </SyntaxHighlighter>
-                </div>
+                <SyntaxHighlighter language="bash" style={docco} className="code-snippet rounded">
+                  {`curl -X POST \\\n  -H "Authorization: Bearer ${userToken}" \\\n  -F "file=@/path/to/your/file" \\\n  http://localhost:5328/api/upload`}
+                </SyntaxHighlighter>
               </div>
-            </div>
-          </div>
-        );
+            );
       case 8:
         return (
           <div>

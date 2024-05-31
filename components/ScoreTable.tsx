@@ -1,207 +1,172 @@
-// components/ScoreTxns.tsx
-import React from 'react';
-import Image from 'next/image';
+// components/ScoreTable.tsx
 
-type TransactionType = 'Sent' | 'Received';
+'use client'
 
-interface Transaction {
-  timestamp: string;
-  type: TransactionType;
-  cryptocurrency: string;
-  thirdPartyIdacScore: number;
-  usdAmount: number;
-  thirdPartyWallet: string;
+import React, { useState } from 'react';
+import { AddressCheckResult } from '@/utilities/GenAiFirewall';
+import { getColorForClassification } from '@/utilities/colorMapping'; // Ensure the path is correct
+
+interface ScoreTableProps {
+  results: AddressCheckResult[];
+  getColorForClassification: (classification: 'pass' | 'fail' | 'pending') => string;
+
 }
 
-interface ScoreTxnsProps {
-  transactions: Transaction[];
-  overallScore: number | null; // Pass the overall iDAC score as a prop
-}
+const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
-const getColorForScore = (score: number, overallScore: number | null): string => {
-  if (overallScore === null) {
-    return 'grey'; // Default color for unknown overall score
-  }
+  const toggleRow = (index: number) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(index)) {
+      newExpandedRows.delete(index);
+    } else {
+      newExpandedRows.add(index);
+    }
+    setExpandedRows(newExpandedRows);
+  };
 
-  if (score >= 850) {
-    return 'green';
-  } else if (score >= 740) {
-    return 'yellow';
-  } else if (score >= 670) {
-    return 'orange';
-  } else if (score >= 580) {
-    return 'red';
-  } else if (score >= 450) {
-    return 'black'; // Changed from 'mixed' to 'black' based on your provided criteria
-  } else {
-    return 'grey';
-  }
-};
+  const handleDownloadResults = () => {
+    const jsonData = JSON.stringify(results, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'firewall_results.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-const getCategoryForScore = (score: number): string => {
-  if (score >= 850) {
-    return 'Excellent';
-  } else if (score >= 740) {
-    return 'Good';
-  } else if (score >= 670) {
-    return 'Fair';
-  } else if (score >= 580) {
-    return 'Poor';
-  } else if (score >= 450) {
-    return 'Bad';
-  } else {
-    return 'New';
-  }
-};
-
-const ScoreTable: React.FC<ScoreTxnsProps> = ({ transactions, overallScore }) => {
-  const sortedTransactions = [...transactions].sort((a, b) => b.thirdPartyIdacScore - a.thirdPartyIdacScore);
+  const shortenAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return (
-    <div className="score-transactions">
-      <h2>Transaction History</h2>
-      <div className="table-container">
-        <div className="scroll-view">
-          {Array.isArray(transactions) && transactions.length > 0 ? (
-            <div className="table-responsive">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Party Score</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Party Wallet</th>
-                    <th>Timestamp</th>
-                    <th>Crypto</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedTransactions.map((txn, index) => (
-                    <tr key={index}>
-                      <td className="score-transactions">
-                        <div className="txn-hex">
-                          <Image
-                            src={`/${getColorForScore(txn.thirdPartyIdacScore, overallScore)}.svg`}
-                            alt="Hexagon"
-                            width={15}
-                            height={15}
-                          />
-                        </div>
-                        <div className="tab-score">{txn.thirdPartyIdacScore}</div>
-                      </td>
-                      <td className={getCategoryForScore(txn.thirdPartyIdacScore)}>
-                        {getCategoryForScore(txn.thirdPartyIdacScore)}
-                      </td>
-                      <td>{txn.type}</td>
-                      <td className="wallet">
-                        <div className="shortened-wallet" title={txn.thirdPartyWallet}>
-                          {shortenWalletAddress(txn.thirdPartyWallet)}
-                        </div>
-                      </td>
-                      <td>{txn.timestamp}</td>
-                      <td>{txn.cryptocurrency}</td>
-                      <td>${txn.usdAmount.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p>No transactions available for the given address.</p>
-          )}
+    <div className="score-table-container">
+      <h2>Firewall Address Results</h2>
+      <div className="table-responsive">
+        <div className="table-header">
+          <div className="table-cell">Address</div>
+          <div className="table-cell">Classification</div>
         </div>
+        {results.map((result, index) => (
+          <div key={index} className="table-row" onClick={() => toggleRow(index)}>
+            <div className="table-cell">
+              <span className="wallet-address">{shortenAddress(result.address)}</span>
+            </div>
+            <div className={`table-cell ${getColorForClassification(result.classification)}`}>
+              {result.classification}
+            </div>
+            {expandedRows.has(index) && (
+              <div className="expanded-content">
+                <p><strong>Description:</strong> {result.description}</p>
+                {result.transactionHash && <p><strong>Transaction Hash:</strong> {result.transactionHash}</p>}
+                {result.from && <p><strong>From:</strong> {result.from}</p>}
+                {result.to && <p><strong>To:</strong> {result.to}</p>}
+                {result.parentTxnHash && <p><strong>Parent Txn Hash:</strong> {result.parentTxnHash}</p>}
+                {result.etherscanUrl && (
+                  <p>
+                    <strong>Etherscan URL:</strong>{' '}
+                    <a href={result.etherscanUrl} target="_blank" rel="noopener noreferrer" className="etherscan-link">
+                      Open Link
+                    </a>
+                  </p>
+                )}
+                {result.insights && (
+                  <div className="insights">
+                    <p><strong>Insights:</strong></p>
+                    <pre>{JSON.stringify(result.insights, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
+      <button className="download-button" onClick={handleDownloadResults}>
+        Download Results
+      </button>
       <style jsx>{`
-        .score-transactions {
+        .score-table-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           margin-top: 20px;
-        }
-        .table-container {
-          overflow: auto; /* Enable both horizontal and vertical scroll */
-        }
-        .scroll-view {
-          max-height: 400px; /* Set max height for scroll view */
-          overflow: auto; /* Enable vertical scroll */
+          padding: 0 20px;
+          width: 100%;
         }
         .table-responsive {
           width: 100%;
-          overflow-x: auto; /* Enable horizontal scroll */
         }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 10px;
+        .table-header, .table-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 10px;
+          border: 1px solid #ccc;
+          cursor: pointer;
+          transition: background-color 0.3s ease;
         }
-        th, td {
-          border: 2px solid #ddd;
-          padding: 8px;
+        .table-header {
+          background-color: #f8f9fa;
+          color: #000;
+          font-weight: bold;
+        }
+        .table-cell {
+          flex: 1;
           text-align: left;
+          padding: 0 10px;
         }
-        .txn-hex {
-          margin-right: 8px;
-        }
-        .tab-score {
-          max-width: 100px;
-          color: white;
-        }
-        .wallet {
-          word-break: break-all;
-        }
-        .shortened-wallet {
-          max-width: 100px;
+        .wallet-address {
+          font-weight: bold;
+          font-size: 14px;
+          margin-bottom: 5px;
           overflow: hidden;
+          white-space: nowrap;
           text-overflow: ellipsis;
+          width: 100%;
         }
-
-        /* Media query for smaller screens */
-        @media (max-width: 600px) {
-          th, td {
-            font-size: 8px;
-            padding: 3px; /* Adjust padding for smaller screens */
-          }
-          .tab-score {
-            max-width: 25px; /* Adjust the maximum width for score */
-          }
-        }
-
-        /* Custom styles for category classes */
-        .Excellent {
+        .green {
           color: green;
         }
-        .Good {
-          color: yellow;
-        }
-        .Fair {
-          color: orange;
-        }
-        .Poor {
+        .red {
           color: red;
         }
-        .Bad {
-          color: black;
-          border: 1px solid white; /* Add the desired border style for the "Bad" category */
+        .yellow {
+          color: yellow;
         }
-        .New {
-          color: grey;
+        .expanded-content {
+          padding: 10px;
+          border-top: 1px solid #ccc;
+        }
+        .insights {
+          margin-top: 10px;
+        }
+        .download-button {
+          margin-top: 20px;
+          padding: 10px 20px;
+          cursor: pointer;
+          background-color: #007bff;
+          color: #fff;
+          border: none;
+          border-radius: 5px;
+          font-size: 16px;
+        }
+        .download-button:hover {
+          background-color: #0056b3;
+        }
+        .etherscan-link {
+          color: #913d88;
+          text-decoration: none;
+        }
+        .etherscan-link:hover {
+          color: #6f1d6b;
+        }
+        @media (max-width: 600px) {
+          .wallet-address {
+            font-size: 12px;
+          }
         }
       `}</style>
     </div>
   );
-};
-
-// Function to shorten a wallet address
-const shortenWalletAddress = (address: string): string => {
-  const prefixLength = 6; // Show the first 6 characters
-  const suffixLength = 4; // Show the last 4 characters
-
-  if (address.length <= prefixLength + suffixLength) {
-    return address; // If the address is short, return as is
-  }
-
-  const prefix = address.slice(0, prefixLength);
-  const suffix = address.slice(-suffixLength);
-
-  return `${prefix}...${suffix}`;
 };
 
 export default ScoreTable;

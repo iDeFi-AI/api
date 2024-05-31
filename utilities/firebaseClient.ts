@@ -4,7 +4,8 @@ import { getDatabase, ref, set, child, get, remove, onValue, push } from 'fireba
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDaPsvsl6cNCvpWwEBn54TXl5YCSID7w7E",
+
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "api-idefi-ai.firebaseapp.com",
   databaseURL: "https://api-idefi-ai-default-rtdb.firebaseio.com",
   projectId: "api-idefi-ai",
