@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Get the path to the service account key file
-firebase_service_account_key_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY')
+firebase_service_account_key_str = os.getenv('NEXT_PUBLIC_FIREBASE_SERVICE_ACCOUNT_KEY')
 firebase_service_account_key_dict = json.loads(firebase_service_account_key_str)
 
 # Initialize Firebase Admin SDK
