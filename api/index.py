@@ -301,41 +301,6 @@ def download_results(filename):
     except FileNotFoundError:
         return jsonify({'error': 'File not found'}), 404
 
-
-# Serve the progress tracking HTML page
-@app.route('/api/upload_progress', methods=['GET'])
-def upload_progress():
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>File Upload Progress</title>
-    </head>
-    <body>
-        <progress id="progressBar" value="0" max="100"></progress>
-        <p id="progressText">0%</p>
-
-        <script>
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-
-            const source = new EventSource('/api/upload');
-            source.onmessage = function(event) {
-                const progress = parseInt(event.data);
-                progressBar.value = progress;
-                progressText.textContent = `${progress}%`;
-                if (progress === 100) {
-                    source.close();
-                }
-            };
-        </script>
-    </body>
-    </html>
-    """
-    return html_content, 200, {'Content-Type': 'text/html'}
-
 # Endpoint to get flagged addresses
 @app.route('/api/get_flagged_addresses', methods=['GET'])
 def get_flagged_addresses():
