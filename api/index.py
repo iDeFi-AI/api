@@ -1,10 +1,11 @@
 import os
 import datetime
 import logging
+import base64
 import re  
 from flask import Flask, request, jsonify, send_file, Response, make_response, url_for, send_from_directory, stream_with_context
 import firebase_admin
-from firebase_admin import credentials, db, auth
+from firebase_admin import credentials, db, auth, initialize_app
 from dotenv import load_dotenv
 import json
 import asyncio
@@ -23,18 +24,36 @@ CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Get the path to the service account key file
-firebase_service_account_key_str = os.getenv('NEXT_PUBLIC_FIREBASE_SERVICE_ACCOUNT_KEY')
-firebase_service_account_key_dict = json.loads(firebase_service_account_key_str)
+# Get the base64-encoded service account key string
+firebase_service_account_key_base64 = os.getenv('NEXT_PUBLIC_FIREBASE_SERVICE_ACCOUNT_KEY')
+
+if not firebase_service_account_key_base64:
+    raise ValueError("Missing Firebase service account key environment variable")
+
+# Decode the base64-encoded string to bytes
+firebase_service_account_key_bytes = base64.b64decode(firebase_service_account_key_base64)
+
+# Convert bytes to JSON string
+firebase_service_account_key_str = firebase_service_account_key_bytes.decode('utf-8')
 
 # Initialize Firebase Admin SDK
-cred = credentials.Certificate(firebase_service_account_key_dict)
-firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://api-idefi-ai-default-rtdb.firebaseio.com/'
-})
+try:
+    firebase_service_account_key_dict = json.loads(firebase_service_account_key_str)
+    cred = credentials.Certificate(firebase_service_account_key_dict)
+    initialize_app(cred, {
+        'databaseURL': 'https://api-idefi-ai-default-rtdb.firebaseio.com/'
+    })
+    logger.debug("Firebase Admin SDK initialized successfully.")
+except json.JSONDecodeError as e:
+    logger.error(f"JSON Decode Error: {e}")
+    raise
+except Exception as e:
+    logger.error(f"Firebase Initialization Error: {e}")
+    raise
 
 # Get a reference to the Firebase Realtime Database
 database = db.reference()
+
 
 # Define the directory containing the .json files
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'upload')
