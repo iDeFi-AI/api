@@ -3,7 +3,7 @@
       "api/**": {
         "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
       },
-      "api/*.py": {
+      "api/**/*.py": {
         "maxDuration": 60
       }
     }
