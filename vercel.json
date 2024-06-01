@@ -1,9 +1,10 @@
 {
     "functions": {
-      "api/index.py": {
-        "maxDuration": 60,
-        "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
-      }
+        "api/**": {
+            "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
+        },
+        "api/index.py": {
+            "maxDuration": 60
+        }
     }
-  }
-  
+}
