@@ -1,12 +1,7 @@
 {
     "functions": {
         "api/**": {
-            "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
-        },
-        "includeFiles": {
-            "api/**/*.py": true
-        },
-        "api/**/*.py": {
+            "excludeFiles": "{.next,*.cache,node_modules,public,app}/**",
             "maxDuration": 60
         }
     }
