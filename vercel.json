@@ -3,7 +3,9 @@
         "api/**": {
             "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
         },
-        "includeFiles": ["api/**/*.py"],
+        "includeFiles": {
+            "api/**/*.py": true
+        },
         "api/**/*.py": {
             "maxDuration": 60
         }
