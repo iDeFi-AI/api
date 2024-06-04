@@ -2,23 +2,20 @@ import os
 import datetime
 import logging
 import base64
-import re  
-from flask import Flask, request, jsonify, send_file, Response, make_response, url_for, send_from_directory, stream_with_context
-import firebase_admin
-from firebase_admin import credentials, db, auth, initialize_app
-from dotenv import load_dotenv
+import re
 import json
-import asyncio
-from aiohttp import ClientSession
-import requests
+from flask import Flask, request, jsonify, send_file, url_for, send_from_directory, make_response
+import firebase_admin
+from firebase_admin import credentials, db, auth, initialize_app, storage
+from dotenv import load_dotenv
 import pandas as pd
-import concurrent.futures
 from flask_cors import CORS
 from io import BytesIO
+import requests
 
 load_dotenv()
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "https://idefi-ai-api.vercel.app"}})
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -41,7 +38,8 @@ try:
     firebase_service_account_key_dict = json.loads(firebase_service_account_key_str)
     cred = credentials.Certificate(firebase_service_account_key_dict)
     initialize_app(cred, {
-        'databaseURL': 'https://api-idefi-ai-default-rtdb.firebaseio.com/'
+        'databaseURL': 'https://api-idefi-ai-default-rtdb.firebaseio.com/',
+        'storageBucket': 'api-idefi-ai.appspot.com'
     })
     logger.debug("Firebase Admin SDK initialized successfully.")
 except json.JSONDecodeError as e:
@@ -51,9 +49,9 @@ except Exception as e:
     logger.error(f"Firebase Initialization Error: {e}")
     raise
 
-# Get a reference to the Firebase Realtime Database
+# Get a reference to the Firebase Realtime Database and Storage
 database = db.reference()
-
+bucket = storage.bucket()
 
 # Define the directory containing the .json files
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'upload')
@@ -62,7 +60,6 @@ FLAGGED_JSON_PATH = os.path.join(UNIQUE_DIR, 'flagged.json')
 ETHERSCAN_API_KEY = 'QEX6DGCMDRPXRU89FKPUR4BG9AUMCR4FXD'
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 
 # Function to load flagged addresses from a JSON file
 def load_flagged_addresses():
@@ -78,6 +75,18 @@ def load_flagged_addresses():
 # Function to check if an address is flagged
 def is_address_flagged(address, flagged_addresses):
     return address.lower() in flagged_addresses
+
+# Function to load unique addresses from JSON files
+def load_unique_addresses():
+    unique_addresses = set()
+    for filename in os.listdir(UNIQUE_DIR):
+        if filename.endswith('.json'):
+            filepath = os.path.join(UNIQUE_DIR, filename)
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+                for address in data:
+                    unique_addresses.add(address.lower())
+    return unique_addresses
 
 # Function to check wallet address against unique addresses and flagged addresses
 def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
@@ -107,7 +116,7 @@ def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
                             description += f"\nParent Txn Hash: {tx['hash']}"
                             description += f"\nEtherscan URL: https://etherscan.io/tx/{tx['hash']}"
                             break  # Stop searching on first match
-            
+
             # Internal transactions
             internal_tx_url = f'https://api.etherscan.io/api?module=account&action=txlistinternal&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
             internal_tx_response = requests.get(internal_tx_url)
@@ -130,6 +139,7 @@ def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
 
     return description
 
+
 # Middleware to log the endpoint being called
 @app.before_request
 def log_request_info():
@@ -144,7 +154,7 @@ def get_all_tokens():
     decoded_token = verify_api_token(token)
     if not decoded_token:
         return jsonify({'error': 'Invalid token'}), 401
-    
+
     uid = decoded_token['uid']
     api_tokens_ref = database.child('apiTokens').child(uid)
     all_tokens = api_tokens_ref.get()
@@ -165,7 +175,7 @@ def generate_user_token():
 
         custom_token = auth.create_custom_token(uid)
         token = custom_token.decode('utf-8')
-    
+
         return jsonify({'token': token}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -194,25 +204,18 @@ def check_wallet_address_endpoint():
         address = request.args.get('address')
         if not address:
             return jsonify({'error': 'Address parameter is required'}), 400
-        
-        # Load unique addresses from all JSON files in the unique directory
-        unique_addresses = set()
-        for filename in os.listdir(UNIQUE_DIR):
-            if filename.endswith('.json'):
-                filepath = os.path.join(UNIQUE_DIR, filename)
-                with open(filepath, 'r') as f:
-                    data = json.load(f)
-                    for address in data:
-                        unique_addresses.add(address.lower())
 
+        # Load unique addresses and flagged addresses
+        unique_addresses = load_unique_addresses()
         flagged_addresses = load_flagged_addresses()
+
         description = check_wallet_address(address, unique_addresses, flagged_addresses)
-        
+
         response_data = {
             'address': address,
             'description': description
         }
-        
+
         return jsonify(response_data)
 
     elif request.method == 'POST':
@@ -220,17 +223,9 @@ def check_wallet_address_endpoint():
         addresses = data.get('addresses', [])
         if not addresses:
             return jsonify({'error': 'Addresses parameter is required'}), 400
-        
-        # Load unique addresses from all JSON files in the unique directory
-        unique_addresses = set()
-        for filename in os.listdir(UNIQUE_DIR):
-            if filename.endswith('.json'):
-                filepath = os.path.join(UNIQUE_DIR, filename)
-                with open(filepath, 'r') as f:
-                    data = json.load(f)
-                    for address in data:
-                        unique_addresses.add(address.lower())
 
+        # Load unique addresses and flagged addresses
+        unique_addresses = load_unique_addresses()
         flagged_addresses = load_flagged_addresses()
         results = []
 
@@ -293,17 +288,21 @@ def upload_file():
             output.write(csv_content.encode())
             output.seek(0)
 
-            # Save the CSV content to a file locally with the current date in the filename
-            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            # Generate filename based on date/time and user UID
+            current_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             filename = f"results_{current_date}.csv"
-            output_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            with open(output_path, 'wb') as f:
-                f.write(output.getvalue())
+
+            # Upload CSV to Firebase Storage
+            blob = bucket.blob(filename)
+            blob.upload_from_file(output, content_type='text/csv')
+
+            # Return URL to access the uploaded file
+            file_url = blob.public_url
 
             # Prepare response with file download URL
             response = jsonify({
                 'details': results,
-                'file_url': url_for('download_results', filename=filename, _external=True)
+                'file_url': file_url
             })
 
             return response
@@ -316,9 +315,18 @@ def upload_file():
 @app.route('/api/download/<filename>', methods=['GET'])
 def download_results(filename):
     try:
-        return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
-    except FileNotFoundError:
-        return jsonify({'error': 'File not found'}), 404
+        # Download file from Firebase Storage
+        blob = bucket.blob(filename)
+        content = blob.download_as_string()
+
+        # Send file as attachment
+        response = make_response(content)
+        response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+        response.mimetype = 'text/csv'
+        return response
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
 
 # Endpoint to get flagged addresses
 @app.route('/api/get_flagged_addresses', methods=['GET'])
@@ -330,19 +338,6 @@ def get_flagged_addresses():
     except Exception as e:
         logger.error(f"Error loading flagged addresses: {e}")
         return jsonify({'error': 'Error loading flagged addresses'}), 500
-
-# Helper function to load unique addresses from JSON files
-def load_unique_addresses():
-    unique_addresses = set()
-    for filename in os.listdir(UNIQUE_DIR):
-        if filename.endswith('.json'):
-            filepath = os.path.join(UNIQUE_DIR, filename)
-            with open(filepath, 'r') as f:
-                data = json.load(f)
-                for address in data:
-                    unique_addresses.add(address.lower())
-    return unique_addresses
-
 
 if __name__ == '__main__':
     app.run(port=5328)
