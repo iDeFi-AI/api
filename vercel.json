@@ -1,6 +1,7 @@
 {
     "functions": {
         "api/**": {
+            "maxDuration": 500,
             "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
         }
     }
