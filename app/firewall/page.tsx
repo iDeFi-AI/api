@@ -4,6 +4,18 @@ import React, { useState, useEffect } from 'react';
 import ScoreTable from '@/components/ScoreTable';
 import { processAddressCheck, AddressCheckResult } from '@/utilities/GenAiFirewall';
 
+// Helper function to clean and validate addresses
+const cleanAndValidateAddresses = (addresses: string[]): string[] => {
+  const validAddresses: string[] = [];
+  addresses.forEach(address => {
+    const cleanedAddress = address.trim();
+    if (/^0x[a-fA-F0-9]{40}$/.test(cleanedAddress)) {
+      validAddresses.push(cleanedAddress);
+    }
+  });
+  return validAddresses;
+};
+
 const FirewallPage: React.FC = () => {
   const [addresses, setAddresses] = useState<string>('');
   const [results, setResults] = useState<AddressCheckResult[]>([]);
@@ -34,6 +46,14 @@ const FirewallPage: React.FC = () => {
       return;
     }
 
+    const addressArray = addresses.split('\n').map(addr => addr.trim());
+    const validAddresses = cleanAndValidateAddresses(addressArray);
+
+    if (validAddresses.length === 0) {
+      setError('No valid addresses provided.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/checkaddress`, {
@@ -41,7 +61,7 @@ const FirewallPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ addresses: addresses.split('\n').map(addr => addr.trim()) })
+        body: JSON.stringify({ addresses: validAddresses })
       });
 
       if (!response.ok) {
@@ -93,7 +113,7 @@ const FirewallPage: React.FC = () => {
         }
 
         const data = await response.json();
-        const processedResults = await processAddressCheck(data, flaggedAddresses);
+        const processedResults = await processAddressCheck(data.details, flaggedAddresses);
         setResults(processedResults);
         setAddresses('');
         setError('');

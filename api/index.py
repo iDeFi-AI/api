@@ -4,7 +4,7 @@ import logging
 import base64
 import re
 import json
-from flask import Flask, request, jsonify, send_file, url_for, send_from_directory, make_response
+from flask import Flask, request, jsonify, send_file, url_for, make_response
 import firebase_admin
 from firebase_admin import credentials, db, auth, initialize_app, storage
 from dotenv import load_dotenv
@@ -63,18 +63,21 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Function to load flagged addresses from a JSON file
 def load_flagged_addresses():
-    flagged_addresses = set()
+    flagged_addresses = {}
     if os.path.exists(FLAGGED_JSON_PATH):
         with open(FLAGGED_JSON_PATH, 'r') as f:
-            flagged_data = json.load(f)
-            for addr, nested_list in flagged_data.items():
-                if isinstance(nested_list, list) and nested_list:
-                    flagged_addresses.add(addr.lower())
+            flagged_addresses = json.load(f)
     return flagged_addresses
 
-# Function to check if an address is flagged
+# Function to recursively check if an address is flagged or part of flagged nested addresses
 def is_address_flagged(address, flagged_addresses):
-    return address.lower() in flagged_addresses
+    address_lower = address.lower()
+    if address_lower in flagged_addresses:
+        return True
+    for nested_list in flagged_addresses.values():
+        if address_lower in [addr.lower() for addr in nested_list]:
+            return True
+    return False
 
 # Function to load unique addresses from JSON files
 def load_unique_addresses():
@@ -93,52 +96,53 @@ def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
     wallet_address_lower = wallet_address.lower()
     description = 'Not Flagged'
 
-    if wallet_address_lower in flagged_addresses:
+    if is_address_flagged(wallet_address, flagged_addresses):
         description = 'Flagged: Wallet address found to be involved in illegal activities'
     elif wallet_address_lower in unique_addresses:
         description = 'Flagged: Wallet address found to be involved in illegal activities'
-    else:
-        try:
-            # Regular transactions
-            regular_tx_url = f'https://api.etherscan.io/api?module=account&action=txlist&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
-            regular_tx_response = requests.get(regular_tx_url)
-            if regular_tx_response.status_code == 200:
-                regular_tx_data = regular_tx_response.json()
-                if 'result' in regular_tx_data:
-                    transactions = regular_tx_data['result']
-                    for tx in transactions:
-                        if tx['to'].lower() in unique_addresses or tx['from'].lower() in unique_addresses:
-                            description = 'Flagged'
-                            description += f"\nInvolved in Mixer/Tornado transaction with {tx['to']}"
-                            description += f"\nTransaction Hash: {tx['hash']}"
-                            description += f"\nFrom: {tx['from']}"
-                            description += f"\nTo: {tx['to']}"
-                            description += f"\nParent Txn Hash: {tx['hash']}"
-                            description += f"\nEtherscan URL: https://etherscan.io/tx/{tx['hash']}"
-                            break  # Stop searching on first match
-
-            # Internal transactions
-            internal_tx_url = f'https://api.etherscan.io/api?module=account&action=txlistinternal&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
-            internal_tx_response = requests.get(internal_tx_url)
-            if internal_tx_response.status_code == 200:
-                internal_tx_data = internal_tx_response.json()
-                if 'result' in internal_tx_data:
-                    internal_transactions = internal_tx_data['result']
-                    for int_tx in internal_transactions:
-                        if int_tx['to'].lower() in unique_addresses or int_tx['from'].lower() in unique_addresses:
-                            description = 'Flagged'
-                            description += f"\nInvolved in internal Mixer/Tornado transaction with {int_tx['to']}"
-                            description += f"\nTransaction Hash: {int_tx['hash']}"
-                            description += f"\nFrom: {int_tx['from']}"
-                            description += f"\nTo: {int_tx['to']}"
-                            description += f"\nParent Txn Hash: {int_tx['hash']}"
-                            description += f"\nEtherscan URL: https://etherscan.io/tx/{int_tx['hash']}"
-                            break  # Stop searching on first match
-        except Exception as e:
-            logger.error(f"Error fetching data from Etherscan API: {e}")
-
     return description
 
+# Function to get etherscan details if address is flagged
+def get_etherscan_details(wallet_address, unique_addresses):
+    details = ""
+    try:
+        # Regular transactions
+        regular_tx_url = f'https://api.etherscan.io/api?module=account&action=txlist&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
+        regular_tx_response = requests.get(regular_tx_url)
+        if regular_tx_response.status_code == 200:
+            regular_tx_data = regular_tx_response.json()
+            if 'result' in regular_tx_data:
+                transactions = regular_tx_data['result']
+                for tx in transactions:
+                    if tx['to'].lower() in unique_addresses or tx['from'].lower() in unique_addresses:
+                        details += f"\nInvolved in Mixer/Tornado transaction with {tx['to']}"
+                        details += f"\nTransaction Hash: {tx['hash']}"
+                        details += f"\nFrom: {tx['from']}"
+                        details += f"\nTo: {tx['to']}"
+                        details += f"\nParent Txn Hash: {tx['hash']}"
+                        details += f"\nEtherscan URL: https://etherscan.io/tx/{tx['hash']}"
+                        break  # Stop searching on first match
+
+        # Internal transactions
+        internal_tx_url = f'https://api.etherscan.io/api?module=account&action=txlistinternal&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
+        internal_tx_response = requests.get(internal_tx_url)
+        if internal_tx_response.status_code == 200:
+            internal_tx_data = internal_tx_response.json()
+            if 'result' in internal_tx_data:
+                internal_transactions = internal_tx_data['result']
+                for int_tx in internal_transactions:
+                    if int_tx['to'].lower() in unique_addresses or int_tx['from'].lower() in unique_addresses:
+                        details += f"\nInvolved in internal Mixer/Tornado transaction with {int_tx['to']}"
+                        details += f"\nTransaction Hash: {int_tx['hash']}"
+                        details += f"\nFrom: {int_tx['from']}"
+                        details += f"\nTo: {int_tx['to']}"
+                        details += f"\nParent Txn Hash: {int_tx['hash']}"
+                        details += f"\nEtherscan URL: https://etherscan.io/tx/{int_tx['hash']}"
+                        break  # Stop searching on first match
+    except Exception as e:
+        logger.error(f"Error fetching data from Etherscan API: {e}")
+
+    return details
 
 # Middleware to log the endpoint being called
 @app.before_request
@@ -210,6 +214,8 @@ def check_wallet_address_endpoint():
         flagged_addresses = load_flagged_addresses()
 
         description = check_wallet_address(address, unique_addresses, flagged_addresses)
+        if 'Flagged' in description:
+            description += get_etherscan_details(address, unique_addresses)
 
         response_data = {
             'address': address,
@@ -231,6 +237,8 @@ def check_wallet_address_endpoint():
 
         for address in addresses:
             description = check_wallet_address(address, unique_addresses, flagged_addresses)
+            if 'Flagged' in description:
+                description += get_etherscan_details(address, unique_addresses)
             results.append({'address': address, 'description': description})
 
         return jsonify(results)
@@ -275,7 +283,9 @@ def upload_file():
 
             for address in addresses:
                 description = check_wallet_address(address, unique_addresses, flagged_addresses)
-                status = 'Pass' if description == 'Not Flagged' else 'Fail'
+                status = 'Pass' if 'Not Flagged' in description else 'Fail'
+                if status == 'Fail':
+                    description += get_etherscan_details(address, unique_addresses)
                 results.append({'address': address, 'status': status, 'description': description})
 
             # Convert results to CSV format
