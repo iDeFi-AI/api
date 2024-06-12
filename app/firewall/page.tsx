@@ -22,6 +22,7 @@ const FirewallPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [flaggedAddresses, setFlaggedAddresses] = useState<Set<string>>(new Set());
+  const [fileUrl, setFileUrl] = useState<string>('');
 
   useEffect(() => {
     const fetchFlaggedAddresses = async () => {
@@ -92,7 +93,7 @@ const FirewallPage: React.FC = () => {
         return 'yellow';
       default:
         return 'white';
-      }
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,6 +116,7 @@ const FirewallPage: React.FC = () => {
         const data = await response.json();
         const processedResults = await processAddressCheck(data.details, flaggedAddresses);
         setResults(processedResults);
+        setFileUrl(data.file_url);
         setAddresses('');
         setError('');
       } catch (error) {
@@ -125,6 +127,26 @@ const FirewallPage: React.FC = () => {
         setIsLoading(false);
       }
     }
+  };
+
+  const handleDownloadResults = () => {
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + results.map(e => `${e.address},${e.description},${e.classification}`).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "results.csv");
+    document.body.appendChild(link); // Required for FF
+
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleClearResults = () => {
+    setResults([]);
+    setFileUrl('');
+    setAddresses('');
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -159,6 +181,17 @@ const FirewallPage: React.FC = () => {
         {results.length > 0 && (
           <div className="results-container">
             <ScoreTable results={results} getColorForClassification={getColorForClassification} />
+            <button onClick={handleDownloadResults} className="download-button">
+              Download Results as CSV
+            </button>
+            {fileUrl && (
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="storage-link">
+                View CSV in Storage
+              </a>
+            )}
+            <button onClick={handleClearResults} className="clear-button">
+              Clear Results
+            </button>
           </div>
         )}
       </div>
@@ -167,7 +200,7 @@ const FirewallPage: React.FC = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          margin-top: 50px;
+          margin-top: 75px;
           padding: 0 20px;
         }
         form {
@@ -188,7 +221,6 @@ const FirewallPage: React.FC = () => {
           margin-bottom: 10px;
         }
         button {
-          width: 100%;
           padding: 10px 20px;
           margin-top: 10px;
           cursor: pointer;
@@ -210,8 +242,29 @@ const FirewallPage: React.FC = () => {
           width: 100%;
           overflow-x: auto;
           margin-top: 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
-
+        .download-button, .clear-button, .storage-link {
+          margin-top: 20px;
+          background-color: #28a745;
+          color: white;
+          padding: 10px 20px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          text-decoration: none;
+        }
+        .download-button:hover, .clear-button:hover, .storage-link:hover {
+          background-color: #218838;
+        }
+        .clear-button {
+          background-color: #dc3545;
+        }
+        .clear-button:hover {
+          background-color: #c82333;
+        }
         @media (max-width: 600px) {
           form {
             max-width: 100%;

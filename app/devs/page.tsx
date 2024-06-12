@@ -151,10 +151,10 @@ export default function DeveloperPortal() {
   };
   
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-24">
       <h1 className="text-3xl font-bold mb-4">Developer Portal</h1>
       <p className="mb-4">
-        Welcome to the Developer Portal! Here, you can manage your API keys, access tokens, 
+        Welcome to the Developer Portal! Here, you can manage your API keys, access your token, 
         access documentation, and explore the capabilities of our API.
       </p>
       <div>
@@ -210,25 +210,6 @@ export default function DeveloperPortal() {
       >
         {loading ? 'Generating...' : 'Generate New API Key'}
       </button>
-
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-4">Documentation</h2>
-        <p className="mb-2">Explore our API documentation to get started:</p>
-        <ul className="list-disc list-inside">
-          <li>
-            <a href="/docs/authentication" className="text-lightlaven hover:underline">Authentication</a>
-          </li>
-          <li>
-            <a href="/docs/endpoints" className="text-lightlaven hover:underline">Endpoints</a>
-          </li>
-          <li>
-            <a href="/docs/examples" className="text-lightlaven hover:underline">Examples</a>
-          </li>
-          <li>
-            <a href="/docs/faqs" className="text-lightlaven hover:underline">FAQs</a>
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }

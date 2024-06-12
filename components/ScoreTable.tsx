@@ -9,7 +9,6 @@ import { getColorForClassification } from '@/utilities/colorMapping'; // Ensure 
 interface ScoreTableProps {
   results: AddressCheckResult[];
   getColorForClassification: (classification: 'pass' | 'fail' | 'pending') => string;
-
 }
 
 const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
@@ -81,9 +80,6 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
           </div>
         ))}
       </div>
-      <button className="download-button" onClick={handleDownloadResults}>
-        Download Results
-      </button>
       <style jsx>{`
         .score-table-container {
           display: flex;
@@ -103,6 +99,7 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
           border: 1px solid #ccc;
           cursor: pointer;
           transition: background-color 0.3s ease;
+          flex-wrap: wrap;
         }
         .table-header {
           background-color: #f8f9fa;
@@ -113,6 +110,8 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
           flex: 1;
           text-align: left;
           padding: 0 10px;
+          min-width: 120px; /* Ensure there's a minimum width for each cell */
+          word-wrap: break-word; /* Break long words to prevent overflow */
         }
         .wallet-address {
           font-weight: bold;
@@ -135,6 +134,8 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
         .expanded-content {
           padding: 10px;
           border-top: 1px solid #ccc;
+          width: 100%;
+          word-wrap: break-word; /* Ensure content wraps */
         }
         .insights {
           margin-top: 10px;
@@ -162,6 +163,16 @@ const ScoreTable: React.FC<ScoreTableProps> = ({ results }) => {
         @media (max-width: 600px) {
           .wallet-address {
             font-size: 12px;
+          }
+          .table-cell {
+            padding: 5px; /* Reduce padding for smaller screens */
+          }
+          .expanded-content {
+            padding: 5px; /* Reduce padding for smaller screens */
+          }
+          .download-button {
+            font-size: 14px;
+            padding: 8px 16px;
           }
         }
       `}</style>

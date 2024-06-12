@@ -99,7 +99,7 @@ def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
     if is_address_flagged(wallet_address, flagged_addresses):
         description = 'Flagged: Wallet address found to be involved in illegal activities'
     elif wallet_address_lower in unique_addresses:
-        description = 'Flagged: Wallet address found to be involved in illegal activities'
+        description = 'Flagged: Wallet address found in OFAC sanction list'
     return description
 
 # Function to get etherscan details if address is flagged

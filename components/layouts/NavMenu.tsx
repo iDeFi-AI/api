@@ -11,7 +11,7 @@ import HeaderNavLink from './HeaderNavLink';
 const menuItems = [
   { label: `Docs`, url: `docs` },
   { label: `Devs`, url: `devs` },
-  { label: `Test`, url: `test` },
+  { label: `Firewall`, url: `firewall` },
   { label: 'Log out', url: '/' },
 ];
 
