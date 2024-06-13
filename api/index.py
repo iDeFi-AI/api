@@ -5,6 +5,7 @@ import base64
 import re
 import json
 from flask import Flask, request, jsonify, send_file, url_for, make_response
+import firebase_admin
 from firebase_admin import credentials, db, auth, initialize_app, storage
 from dotenv import load_dotenv
 import pandas as pd
