@@ -7,5 +7,5 @@ pandas==1.4.0
 flask-cors==3.0.10
 werkzeug==2.3.0
 pydantic>=1.9.0
-urllib3>=1.26.5
+urllib3>=2.0.7
 
