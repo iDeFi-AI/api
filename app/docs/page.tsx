@@ -243,17 +243,66 @@ export default function Page() {
           </div>
         );
       case 5:
-        return (
-          <div>
-            <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
-            <p>
-              Here you'll find answers to frequently asked questions about our API.
-            </p>
-          </div>
-        );
-      default:
-        return null;
-    }
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
+      <p>
+        Here you'll find answers to frequently asked questions about our API.
+      </p>
+      <div className="faq-section">
+      <h3 className="text-lg font-semibold mb-2">Feedback and Support</h3>
+        <p className="mb-4">
+          <strong>Q: How can I provide feedback or report issues?</strong><br />
+          A: We value your feedback and are here to help with any issues. Please email us at <a href="mailto:k3m@idefi.ai" className="text-blue-500 underline">k3m@idefi.ai</a> for support.
+        </p>
+        <h3 className="text-lg font-semibold mb-2">General Questions</h3>
+        <p className="mb-4">
+          <strong>Q: What is the purpose of this API?</strong><br />
+          A: Our API allows users to monitor Ethereum addresses, fetch transaction histories, and receive real-time updates on blockchain activity.
+        </p>
+        <h3 className="text-lg font-semibold mb-2">Account and API Keys</h3>
+        <p className="mb-4">
+          <strong>Q: How do I create an account?</strong><br />
+          A: You can create an account by signing up on our platform. Once your account is created, you will receive a user token and API keys.
+        </p>
+        <p className="mb-4">
+          <strong>Q: How do I obtain my API keys?</strong><br />
+          A: After logging into your account, navigate to the Developer Portal. You can generate and manage your API keys from there.
+        </p>
+        <p className="mb-4">
+          <strong>Q: What should I do if I lose my API keys?</strong><br />
+          A: If you lose your API keys, you can generate new ones from the Developer Portal. Ensure to update your applications with the new keys.
+        </p>
+        <h3 className="text-lg font-semibold mb-2">Using the API</h3>
+        <p className="mb-4">
+          <strong>Q: How do I authenticate API requests?</strong><br />
+          A: Each API request must include your API key in the headers. For example, you can include it as a Bearer token in the Authorization header.
+        </p>
+        <p className="mb-4">
+          <strong>Q: What are the main endpoints of the API?</strong><br />
+          A: The main endpoints include:
+          <ul className="list-disc list-inside ml-4">
+            <li><strong>/api/monitor_address</strong>: Start monitoring an Ethereum address.</li>
+            <li><strong>/api/get_transactions</strong>: Retrieve transaction history for an address.</li>
+            <li><strong>/api/get_user_tokens</strong>: Fetch all API tokens associated with your account.</li>
+          </ul>
+        </p>
+        <h3 className="text-lg font-semibold mb-2">Real-Time Monitoring</h3>
+        <p className="mb-4">
+          <strong>Q: How does the real-time monitoring work?</strong><br />
+          A: Once you start monitoring an address, the system will check for new transactions at regular intervals and update you with real-time notifications.
+        </p>
+        <p className="mb-4">
+          <strong>Q: Can I monitor multiple addresses at once?</strong><br />
+          A: Yes, you can monitor multiple Ethereum addresses simultaneously. Each address will have its own monitoring session.
+        </p>
+      </div>
+    </div>
+  );
+default:
+  return null;
+}
+
   };
 
   return (

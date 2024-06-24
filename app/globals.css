@@ -8,6 +8,12 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  --primary-color: #913D88;
+  --primary-hover-color: #662c60;
+  --secondary-color: #e94e77;
+  --secondary-hover-color: #d94065;
+  --download-color: #4caf50;
+  --download-hover-color: #388e3c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -41,7 +47,6 @@ html, body {
 }
 
 #App\:Footer {
-  position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
@@ -49,8 +54,6 @@ html, body {
   padding: 10px; /* Adjust padding as needed */
   box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.1); /* Optional: Add shadow for visual effect */
 }
-
-/* styles.css */
 
 /* Main Container */
 .main-container {
@@ -81,7 +84,6 @@ html, body {
   background-color: #000;
   color: #fff; /* Change text color on hover */
 }
-
 
 /* Highlight on Selection */
 .nav-container ul li.active {
@@ -124,3 +126,228 @@ html, body {
   word-wrap: break-word;
 }
 
+/* MonitorPage styles */
+.monitor-page {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.monitor-page h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+.monitor-page input[type="text"] {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #ccc;
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 300px;
+  box-sizing: border-box;
+}
+
+.monitor-page .buttons {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 300px;
+  color: white;
+}
+
+.monitor-page .buttons button {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 0.25rem;
+  border: none;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+}
+
+.monitor-page .buttons button.start {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.monitor-page .buttons button.start:hover {
+  background-color: var(--primary-hover-color);
+}
+
+.monitor-page .buttons button.stop {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.monitor-page .buttons button.stop:hover {
+  background-color: var(--secondary-hover-color);
+}
+
+.monitor-page .buttons button.download {
+  background-color: var(--download-color);
+  color: white;
+}
+
+.monitor-page .buttons button.download:hover {
+  background-color: var(--download-hover-color);
+}
+
+.monitor-page .filter-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.monitor-page .filter-section select {
+  margin-left: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #ccc;
+}
+
+.pulse-animation {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  margin-top: 1rem;
+}
+
+.pulse-animation .dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: red; /* Adjust color as needed */
+  position: absolute;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.7;
+  }
+}
+
+.transaction-history {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 600px;
+  overflow-x: auto;
+}
+
+.transaction-history ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.transaction-history li {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 0.25rem;
+  border: 1px solid #eee;
+}
+
+.transaction-history li p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.transaction-history li.incoming {
+  border-left: 4px solid #4caf50;
+}
+
+.transaction-history li.outgoing {
+  border-left: 4px solid #f44336;
+}
+
+.transaction-history li.internal {
+  border-left: 4px solid #ff9800;
+}
+
+.monitoring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.monitoring-graph {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 20px;
+}
+
+.listening-indicator {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 1rem;
+}
+
+/* Notification styles */
+.notifications {
+  margin-top: 20px;
+}
+
+.notifications ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.notifications li {
+  margin-bottom: 10px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .monitor-page input[type="text"],
+  .monitor-page .buttons button {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .monitor-page .buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .monitor-page .buttons button {
+    margin: 0.5rem 0;
+  }
+
+  .monitoring-graph {
+    max-width: 100%;
+  }
+
+  .transaction-history {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .monitor-page h2 {
+    font-size: 1.5rem;
+  }
+
+  .transaction-history li p {
+    font-size: 0.75rem;
+  }
+}

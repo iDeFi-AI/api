@@ -99,9 +99,9 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center h-screen">
-    <Image src='/hexagon.png' alt="Company Logo" width={200} height={200} />
+    <Image src='/mainlogo.png' alt="Company Logo" width={200} height={200} />
     <br></br>
-      <h1 className="text-3xl mb-4">iDeFi.ai API</h1>
+      <h1 className="text-3xl mb-4">API iDeFi.AI</h1>
       <br></br>
       <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
         <input

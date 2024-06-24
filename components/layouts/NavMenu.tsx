@@ -12,6 +12,7 @@ const menuItems = [
   { label: `Docs`, url: `docs` },
   { label: `Devs`, url: `devs` },
   { label: `Firewall`, url: `firewall` },
+  { label: `Monitor`, url: `monitor` },
   { label: 'Log out', url: '/' },
 ];
 

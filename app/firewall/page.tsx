@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import ScoreTable from '@/components/ScoreTable';
 import { processAddressCheck, AddressCheckResult } from '@/utilities/GenAiFirewall';
+import { auth, database, ref, get, set } from '@/utilities/firebaseClient';
+import { useAuth } from '@/components/authContext';
 
 // Helper function to clean and validate addresses
 const cleanAndValidateAddresses = (addresses: string[]): string[] => {
@@ -23,6 +25,8 @@ const FirewallPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [flaggedAddresses, setFlaggedAddresses] = useState<Set<string>>(new Set());
   const [fileUrl, setFileUrl] = useState<string>('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [{ apiKey: userApiKey }] = useAuth();
 
   useEffect(() => {
     const fetchFlaggedAddresses = async () => {
@@ -38,7 +42,23 @@ const FirewallPage: React.FC = () => {
       }
     };
 
+    const fetchUploadHistory = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const uid = user.uid;
+          const snapshot = await get(ref(database, `users/${uid}/upload_history`));
+          if (snapshot.exists()) {
+            setHistory(Object.values(snapshot.val()));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching upload history:', error);
+      }
+    };
+
     fetchFlaggedAddresses();
+    fetchUploadHistory();
   }, []);
 
   const handleAddressCheck = async () => {
@@ -119,6 +139,18 @@ const FirewallPage: React.FC = () => {
         setFileUrl(data.file_url);
         setAddresses('');
         setError('');
+
+        // Update history
+        const user = auth.currentUser;
+        if (user) {
+          const uid = user.uid;
+          const historyRef = ref(database, `users/${uid}/upload_history`);
+          const snapshot = await get(historyRef);
+          const currentHistory = snapshot.exists() ? snapshot.val() : [];
+          const updatedHistory = [...currentHistory, { fileUrl: data.file_url, timestamp: new Date().toISOString() }];
+          await set(historyRef, updatedHistory);
+          setHistory(updatedHistory);
+        }
       } catch (error) {
         console.error('Error uploading file:', error);
         setResults([]);
@@ -194,6 +226,19 @@ const FirewallPage: React.FC = () => {
             </button>
           </div>
         )}
+        <div className="history-container text-black">
+          <h2>Upload History</h2>
+          <ul>
+            {history.map((item, index) => (
+              <li key={index}>
+                <p><strong>Timestamp:</strong> {item.timestamp}</p>
+                <a href={item.fileUrl} target="_blank" rel="noopener noreferrer">
+                  View File
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <style jsx>{`
         .firewall-page {
@@ -224,14 +269,14 @@ const FirewallPage: React.FC = () => {
           padding: 10px 20px;
           margin-top: 10px;
           cursor: pointer;
-          background-color: #007bff;
+          background-color: #913D88;
           color: #fff;
           border: none;
           border-radius: 5px;
           font-size: 16px;
         }
         button:hover {
-          background-color: #0056b3;
+          background-color: #6b2d65;
         }
         .error {
           color: red;
@@ -264,6 +309,20 @@ const FirewallPage: React.FC = () => {
         }
         .clear-button:hover {
           background-color: #c82333;
+        }
+        .history-container {
+          width: 100%;
+          margin-top: 20px;
+          padding: 20px;
+          background-color: #f8f9fa;
+          border-radius: 5px;
+        }
+        .history-container ul {
+          list-style-type: none;
+          padding: 0;
+        }
+        .history-container li {
+          margin-bottom: 10px;
         }
         @media (max-width: 600px) {
           form {

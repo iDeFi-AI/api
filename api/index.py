@@ -349,5 +349,53 @@ def get_flagged_addresses():
         logger.error(f"Error loading flagged addresses: {e}")
         return jsonify({'error': 'Error loading flagged addresses'}), 500
 
+@app.route('/api/get_upload_history', methods=['GET'])
+def get_upload_history():
+    uid = request.args.get('uid')
+    if not uid:
+        return jsonify({'error': 'UID required'}), 400
+
+    history_ref = db.reference(f'users/{uid}/upload_history')
+    history = history_ref.get()
+    if history:
+        return jsonify({'history': list(history.values())}), 200
+    else:
+        return jsonify({'history': []}), 200
+
+@app.route('/api/monitor_address', methods=['POST'])
+def monitor_address():
+    data = request.get_json()
+    address = data.get('address')
+    if not address:
+        return jsonify({'error': 'Address parameter is required'}), 400
+
+    transactions = get_transaction_history(address)
+    return jsonify({'transactions': transactions})
+
+def get_transaction_history(address):
+    try:
+        url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&sort=asc&apikey={ETHERSCAN_API_KEY}'
+        response = requests.get(url)
+        if response.status_code != 200:
+            return []
+
+        data = response.json()
+        if data['status'] != '1':
+            return []
+
+        transactions = data['result']
+        formatted_transactions = [{
+            'hash': tx['hash'],
+            'from': tx['from'],
+            'to': tx['to'],
+            'value': int(tx['value']) / 1e18,  # Convert from Wei to Ether
+            'timestamp': int(tx['timeStamp'])
+        } for tx in transactions]
+
+        return formatted_transactions
+    except Exception as e:
+        logger.error(f"Error fetching transaction history: {e}")
+        return []
+
 if __name__ == '__main__':
     app.run(port=5328)
