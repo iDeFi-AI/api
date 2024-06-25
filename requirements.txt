@@ -1,6 +1,8 @@
 Flask==2.0.1
 firebase-admin==5.1.0
-python-dotenv==0.19.1
-pandas==1.4.0
 Flask-Cors==3.0.10
+pandas==1.4.0
 requests==2.31.0
+python-dotenv==0.19.1
+Werkzeug==2.3.0
+numpy==1.22.0
