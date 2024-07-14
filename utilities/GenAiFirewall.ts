@@ -1,5 +1,3 @@
-// utilities/GenAiFirewall.ts
-
 import { openaiApiKey } from '@/constants/env';
 
 export interface AddressCheckResult {
@@ -19,7 +17,7 @@ interface PromptContent {
   results: string[];
 }
 
-export const generateOpenAIPrompt = async (content: PromptContent): Promise<string> => {
+export const generateAddressCheckPrompt = async (content: PromptContent): Promise<string> => {
   const { addresses, results } = content;
 
   const promptContent = `
@@ -33,6 +31,41 @@ export const generateOpenAIPrompt = async (content: PromptContent): Promise<stri
     ${results.map((result, index) => `Result ${index + 1}: ${result}`).join('\n')}
 
     Please provide detailed analysis and classify each address as 'pass', 'fail', or 'pending' based on the results.
+  `;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo-0125',
+        messages: [{ role: 'system', content: promptContent }],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('OpenAI API request failed');
+    }
+
+    const responseData = await response.json();
+    const generatedPrompt = responseData?.choices?.[0]?.message?.content || '';
+
+    return generatedPrompt;
+  } catch (error) {
+    console.error('Error calling OpenAI API:', error);
+    throw error;
+  }
+};
+
+export const generateSmartContractAnalysisPrompt = async (contractCode: string): Promise<string> => {
+  const promptContent = `
+    Analyze the following Solidity smart contract and provide insights regarding its security, potential vulnerabilities, and logical errors.
+
+    Contract Code:
+    ${contractCode}
   `;
 
   try {

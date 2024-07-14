@@ -11,8 +11,12 @@ import HeaderNavLink from './HeaderNavLink';
 const menuItems = [
   { label: `Docs`, url: `docs` },
   { label: `Devs`, url: `devs` },
-  { label: `Firewall`, url: `firewall` },
+  { label: `Metrics`, url: `metrics`},
   { label: `Monitor`, url: `monitor` },
+  { label: `Firewall`, url: `firewall` },
+  { label: `Contracts`, url: `smartscan`},
+  { label: `DustCheck`, url: `undust`},
+  { label: `TxMapping`, url: `txmap`},
   { label: 'Log out', url: '/' },
 ];
 

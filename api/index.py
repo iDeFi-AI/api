@@ -15,7 +15,7 @@ import requests
 
 load_dotenv()
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["https://api.idefi.api", "https://idefi-ai-api.vercel.app"]}})
+CORS(app, resources={r"/api/*": {"origins": ["https://api.idefi.api", "https://idefi-ai-api.vercel.app", "https://q.idefi.ai"]}})
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -58,6 +58,7 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'upload')
 UNIQUE_DIR = os.path.join(os.path.dirname(__file__), 'unique')
 FLAGGED_JSON_PATH = os.path.join(UNIQUE_DIR, 'flagged.json')
 ETHERSCAN_API_KEY = 'QEX6DGCMDRPXRU89FKPUR4BG9AUMCR4FXD'
+OPENAI_API_KEY = os.getenv('NEXT_PUBLIC_OPENAI_API_KEY')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -241,6 +242,36 @@ def check_wallet_address_endpoint():
                 description += get_etherscan_details(address, unique_addresses)
             results.append({'address': address, 'description': description})
 
+        # Call GenAI to analyze the results and get insights
+        prompt_content = {
+            "addresses": addresses,
+            "results": [result['description'] for result in results]
+        }
+
+        try:
+            genai_response = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {OPENAI_API_KEY}',
+                },
+                json={
+                    'model': 'gpt-3.5-turbo-0125',
+                    'messages': [{'role': 'system', 'content': f"Analyze the following Ethereum addresses: {prompt_content}"}]
+                }
+            )
+
+            if genai_response.status_code != 200:
+                return jsonify({'error': 'Failed to analyze with GenAI'}), 500
+
+            insights = genai_response.json()
+            for i, result in enumerate(results):
+                result['insights'] = insights['choices'][i]['message']['content']
+
+        except Exception as e:
+            logger.error(f"Error calling OpenAI API: {e}")
+            return jsonify({'error': 'Failed to analyze with GenAI'}), 500
+
         return jsonify(results)
 
 # Helper function to clean and validate addresses
@@ -362,6 +393,7 @@ def get_upload_history():
     else:
         return jsonify({'history': []}), 200
 
+
 @app.route('/api/monitor_address', methods=['POST'])
 def monitor_address():
     data = request.get_json()
@@ -396,6 +428,285 @@ def get_transaction_history(address):
     except Exception as e:
         logger.error(f"Error fetching transaction history: {e}")
         return []
+
+def check_dusting_patterns(wallet_address):
+    # Placeholder function for checking dusting patterns
+    dusting_patterns = []
+    
+    try:
+        # Fetch the wallet's transactions from Etherscan API
+        url = f'https://api.etherscan.io/api?module=account&action=txlist&address={wallet_address}&sort=asc&apikey={ETHERSCAN_API_KEY}'
+        response = requests.get(url)
+        if response.status_code != 200:
+            return dusting_patterns
+
+        data = response.json()
+        if data['status'] != '1':
+            return dusting_patterns
+
+        transactions = data['result']
+        
+        # Analyze transactions for dusting behavior
+        for tx in transactions:
+            value_eth = int(tx['value']) / 1e18  # Convert from Wei to Ether
+            # Consider dust transactions as those with very small amounts, e.g., less than 0.001 ETH
+            if value_eth > 0 and value_eth < 0.001:
+                dusting_patterns.append({
+                    'transactionHash': tx['hash'],
+                    'from': tx['from'],
+                    'to': tx['to'],
+                    'value': value_eth,
+                    'timestamp': datetime.datetime.fromtimestamp(int(tx['timeStamp'])).isoformat()
+                })
+
+    except Exception as e:
+        logger.error(f"Error fetching transaction history: {e}")
+
+    return dusting_patterns
+
+
+@app.route('/api/dustcheck', methods=['GET'])
+def dust_check_endpoint():
+    address = request.args.get('address')
+    if not address:
+        return jsonify({'error': 'Address parameter is required'}), 400
+
+    # Load unique addresses and flagged addresses
+    unique_addresses = load_unique_addresses()
+    flagged_addresses = load_flagged_addresses()
+
+    description = check_wallet_address(address, unique_addresses, flagged_addresses)
+    if 'Flagged' in description:
+        description += get_etherscan_details(address, unique_addresses)
+
+    dusting_patterns = check_dusting_patterns(address)
+    recommendations = provide_dusting_recommendations(dusting_patterns)
+
+    response_data = {
+        'address': address,
+        'description': description,
+        'dusting_patterns': dusting_patterns,
+        'recommendations': recommendations
+    }
+
+    return jsonify(response_data)
+
+# New endpoint for analyzing smart contracts
+@app.route('/api/analyze_smart_contract', methods=['POST'])
+def analyze_smart_contract():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if file and file.filename.endswith('.sol'):
+        try:
+            # Read the smart contract code
+            contract_code = file.read().decode('utf-8')
+
+            # Call the AI service to analyze the smart contract
+            ai_service_url = 'https://api.openai.com/v1/chat/completions'
+            payload = {
+                'model': 'gpt-3.5-turbo-0125',
+                'messages': [{'role': 'system', 'content': f"Analyze the following Solidity smart contract: {contract_code}"}]
+            }
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {OPENAI_API_KEY}'
+            }
+
+            response = requests.post(ai_service_url, json=payload, headers=headers)
+
+            if response.status_code != 200:
+                return jsonify({'error': 'Failed to analyze smart contract'}), 500
+
+            analysis_result = response.json()
+            return jsonify({'analysis': analysis_result})
+
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'Unsupported file type. Only .sol files are allowed'}), 400
+
+# New endpoint to fetch etherscan data with address as query parameter
+@app.route('/api/get_etherscan_data', methods=['GET'])
+def get_etherscan_data():
+    try:
+        # Fetch address from query parameters
+        address = request.args.get('address')
+        if not address:
+            return jsonify({'error': 'Address parameter is required'}), 400
+        
+        url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}&page=1&offset=1'
+        
+        app.logger.debug(f"Fetching data from URL: {url}")
+        response = requests.get(url)
+        response.raise_for_status()  # Raise HTTPError for bad responses
+
+        data = response.json()
+        app.logger.debug(f"Response data: {data}")
+
+        if 'result' in data:
+            if data['result']:
+                app.logger.debug(f"Returning first transaction: {data['result'][0]}")
+                return jsonify(data['result'][0])  # Return only the first transaction
+            else:
+                app.logger.debug("No transactions found in 'result'")
+                return jsonify({'error': 'No transactions found'}), 404
+        else:
+            app.logger.debug("'result' field not found in response")
+            return jsonify({'error': "'result' field not found in response"}), 500
+
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"RequestException: {e}")
+        return jsonify({'error': f'Failed to fetch data from Etherscan: {e}'}), 500
+    except Exception as e:
+        app.logger.error(f"Exception: {e}")
+        return jsonify({'error': f'An error occurred: {e}'}), 500
+
+# Endpoint to fetch on-chain and off-chain transaction analysis
+@app.route('/api/analyze_transactions', methods=['POST'])
+def analyze_transactions_endpoint():
+    try:
+        address = request.json.get('address')
+        transactions = get_transaction_history(address)
+        on_chain_to_off_chain, off_chain_to_on_chain = analyze_transactions(address, transactions)
+        return jsonify({
+            'on_chain_to_off_chain': on_chain_to_off_chain,
+            'off_chain_to_on_chain': off_chain_to_on_chain
+        })
+    except Exception as e:
+        logger.error(f"Exception: {e}")
+        return jsonify({'error': f'An error occurred: {e}'}), 500
+
+# Helper function to analyze transactions
+def analyze_transactions(address, transactions):
+    on_chain_to_off_chain = {}
+    off_chain_to_on_chain = {}
+
+    for tx in transactions:
+        if tx['from'] == address.lower():
+            # Outgoing transaction
+            if tx['to'] not in on_chain_to_off_chain:
+                on_chain_to_off_chain[tx['to']] = 0
+            on_chain_to_off_chain[tx['to']] += int(tx['value'])
+        elif tx['to'] == address.lower():
+            # Incoming transaction
+            if tx['from'] not in off_chain_to_on_chain:
+                off_chain_to_on_chain[tx['from']] = 0
+            off_chain_to_on_chain[tx['from']] += int(tx['value'])
+
+    return on_chain_to_off_chain, off_chain_to_on_chain
+
+def calculate_activity_score(data):
+    transaction_count = len(data['transactions'])
+    transaction_value_sum = sum(float(tx['value']) for tx in data['transactions'])
+    activity_score = min(100, transaction_count + transaction_value_sum / 10)
+    return activity_score
+
+def calculate_risk_scores(data):
+    return {
+        "targeted_attacks": calculate_targeted_attack_risk(data),
+        "dusting_attacks": calculate_dusting_attack_risk(data),
+        "draining": calculate_draining_risk(data),
+        "phishing": calculate_phishing_risk(data)
+    }
+
+def calculate_targeted_attack_risk(data):
+    high_value_tx = sum(1 for tx in data['transactions'] if float(tx['value']) > 1)
+    return min(100, high_value_tx * 5)
+
+def calculate_dusting_attack_risk(data):
+    dust_tx = sum(1 for tx in data['transactions'] if float(tx['value']) < 0.0001)
+    return min(100, dust_tx * 10)
+
+def calculate_draining_risk(data):
+    total_outflow = sum(float(tx['value']) for tx in data['transactions'] if tx['from'] == data['address'])
+    return min(100, total_outflow / 100)
+
+def calculate_phishing_risk(data):
+    failed_tx = sum(1 for tx in data['transactions'] if tx['status'] == 'Failed')
+    return min(100, failed_tx * 10)
+
+def calculate_opportunity_scores(data):
+    return {
+        "investment": calculate_investment_opportunity(data),
+        "staking": calculate_staking_opportunity(data),
+        "tax_efficiency": calculate_tax_efficiency(data)
+    }
+
+def calculate_investment_opportunity(data):
+    incoming_tx_value = sum(float(tx['value']) for tx in data['transactions'] if tx['to'] == data['address'])
+    return min(100, incoming_tx_value / 1000)
+
+def calculate_staking_opportunity(data):
+    unique_stake_tx = len(set(tx['to'] for tx in data['transactions']))
+    return min(100, unique_stake_tx * 2)
+
+def calculate_tax_efficiency(data):
+    regular_tx = sum(1 for tx in data['transactions'] if tx['description'] == 'Regular transaction')
+    return min(100, regular_tx * 2)
+
+def calculate_trust_scores(data):
+    return {
+        "trusted_sources": calculate_trusted_sources(data),
+        "trusted_recipients": calculate_trusted_recipients(data),
+        "wallet_trust": calculate_wallet_trust(data)
+    }
+
+def calculate_trusted_sources(data):
+    unique_sources = len(set(tx['from'] for tx in data['transactions'] if tx['to'] == data['address']))
+    return min(100, unique_sources * 2)
+
+def calculate_trusted_recipients(data):
+    unique_recipients = len(set(tx['to'] for tx in data['transactions'] if tx['from'] == data['address']))
+    return min(100, unique_recipients * 2)
+
+def calculate_wallet_trust(data):
+    trust_factor = len(data['transactions']) / 10
+    return min(100, trust_factor * 2)
+
+def calculate_volatility_scores(data):
+    return {
+        "by_coin": calculate_volatility_by_coin(data),
+        "by_wallet": calculate_volatility_by_wallet(data)
+    }
+
+def calculate_volatility_by_coin(data):
+    values = [float(tx['value']) for tx in data['transactions']]
+    return (max(values) - min(values)) / max(values) * 100 if values else 0
+
+def calculate_volatility_by_wallet(data):
+    tx_count = len(data['transactions'])
+    tx_value_sum = sum(float(tx['value']) for tx in data['transactions'])
+    return min(100, (tx_count / tx_value_sum) * 100 if tx_value_sum else 0)
+
+@app.route('/api/calculate_metrics', methods=['POST'])
+def calculate_metrics_endpoint():
+    data = request.json
+    transformed_data = data.get("transformed_data")
+
+    if not transformed_data:
+        return jsonify({"error": "Transformed data is required"}), 400
+
+    try:
+        activity_score = calculate_activity_score(transformed_data)
+        risk_scores = calculate_risk_scores(transformed_data)
+        opportunity_scores = calculate_opportunity_scores(transformed_data)
+        trust_scores = calculate_trust_scores(transformed_data)
+        volatility_scores = calculate_volatility_scores(transformed_data)
+
+        return jsonify({
+            "activity_score": activity_score,
+            "risk_scores": risk_scores,
+            "opportunity_scores": opportunity_scores,
+            "trust_scores": trust_scores,
+            "volatility_scores": volatility_scores
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(port=5328)

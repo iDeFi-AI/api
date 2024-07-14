@@ -42,7 +42,12 @@ export default function Page() {
           curlUpload: `curl -X POST \\\n  -H "Authorization: Bearer ${userToken}" \\\n  -F "file=@/path/to/your/file" \\\n  https://api.idefi.ai/api/upload`,
           jsUpload: `const formData = new FormData();\nformData.append('file', fileInput.files[0]);\n\nfetch('https://api.idefi.ai/api/upload', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer ${userToken}'\n  },\n  body: formData\n})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(error => console.error('Error:', error));`,
           curlCheckAddress: `curl -X POST \\\n  -H "Content-Type: application/json" \\\n  -d '{"addresses": ["ADDRESS_TO_CHECK"]}' \\\n  https://api.idefi.ai/api/checkaddress`,
-          jsCheckAddress: `fetch('https://api.idefi.ai/api/checkaddress', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({ addresses: ['ADDRESS_TO_CHECK'] })\n})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(error => console.error('Error:', error));`
+          jsCheckAddress: `fetch('https://api.idefi.ai/api/checkaddress', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({ addresses: ['ADDRESS_TO_CHECK'] })\n})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(error => console.error('Error:', error));`,
+          curlAnalyzeSmartContract: `curl -X POST \\\n  -H "Authorization: Bearer ${userToken}" \\\n  -F "file=@/path/to/your/smart_contract.sol" \\\n  https://api.idefi.ai/api/analyze_smart_contract`,
+          jsAnalyzeSmartContract: `const formData = new FormData();\nformData.append('file', fileInput.files[0]);\n\nfetch('https://api.idefi.ai/api/analyze_smart_contract', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer ${userToken}'\n  },\n  body: formData\n})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(error => console.error('Error:', error));`,
+          etherscanData: `curl -X GET "https://api.yoursite.com/api/get_etherscan_data?address=YOUR_ADDRESS"`,
+          analyzeTransactions: `curl -X POST "https://api.yoursite.com/api/analyze_transactions" -H "Content-Type: application/json" -d '{"address": "YOUR_ADDRESS"}'`,
+          calculateMetrics: `curl -X POST "https://api.yoursite.com/api/calculate_metrics" -H "Content-Type: application/json" -d '{"transformed_data": { /* your data */ }}'`
         };
       default:
         return {};
@@ -168,12 +173,182 @@ export default function Page() {
           <div>
             <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
             <p>
-              The endpoints below tap into our unique dataset for checking EVM based wallet addresses with AI
+              Below are the detailed descriptions of our API endpoints, including parameters, request/response examples, and potential error codes.
             </p>
             <h3 className="text-lg font-semibold mt-4">Endpoints:</h3>
             <ul className="list-disc pl-5">
-              <li>/api/checkaddress - Check the status of a wallet address</li>
-              <li>/api/upload - Upload a file containing addresses</li>
+              <li>
+                <strong>/api/checkaddress</strong>
+                <p>Description: Check the status of a wallet address.</p>
+                <p>Method: POST</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>addresses: An array of Ethereum addresses to check.</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                {`[
+                    {
+                      "address": "ADDRESS_TO_CHECK",
+                      "description": "Status description",
+                      "insights": "Additional insights from AI analysis"
+                    }
+                  ]`}
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>400: Address parameter is required</li>
+                  <li>500: Failed to analyze with GenAI</li>
+                </ul>
+              </li>
+              <li>
+                <strong>/api/upload</strong>
+                <p>Description: Upload a file containing addresses.</p>
+                <p>Method: POST</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>file: The file to upload (.csv or .json).</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                    {`{
+                      "details": [
+                        {
+                          "address": "ADDRESS_FROM_FILE",
+                          "status": "Pass/Fail",
+                          "description": "Status description"
+                        }
+                      ],
+                      "file_url": "URL_TO_UPLOADED_FILE"
+                    }`} 
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>400: No file part or unsupported file type</li>
+                  <li>500: Error during file processing</li>
+                </ul>
+              </li>
+              <li>
+                <strong>/api/analyze_smart_contract</strong>
+                <p>Description: Analyze a Solidity smart contract.</p>
+                <p>Method: POST</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>file: The Solidity (.sol) file to analyze.</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                                    {`{
+                    "analysis": "Detailed analysis of the smart contract"
+                  }`}
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>400: No file part or unsupported file type</li>
+                  <li>500: Failed to analyze smart contract</li>
+                </ul>
+              </li>
+              <li>
+                <strong>/api/get_etherscan_data</strong>
+                <p>Description: Fetch Etherscan data for a given address.</p>
+                <p>Method: GET</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>address: The Ethereum address to fetch data for.</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                  {`{
+                    "blockNumber": "1234567",
+                    "timeStamp": "1234567890",
+                    "hash": "0x123456...",
+                    "nonce": "0",
+                    "blockHash": "0x123456...",
+                    "transactionIndex": "0",
+                    "from": "0x123456...",
+                    "to": "0x123456...",
+                    "value": "1234567890",
+                    "gas": "21000",
+                    "gasPrice": "1234567890",
+                    "isError": "0",
+                    "txreceipt_status": "1",
+                    "input": "0x",
+                    "contractAddress": "",
+                    "cumulativeGasUsed": "21000",
+                    "gasUsed": "21000",
+                    "confirmations": "1"
+                  }`}
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>400: Address parameter is required</li>
+                  <li>500: Failed to fetch data from Etherscan</li>
+                </ul>
+              </li>
+              <li>
+                <strong>/api/analyze_transactions</strong>
+                <p>Description: Fetch on-chain and off-chain transaction analysis.</p>
+                <p>Method: POST</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>address: The Ethereum address to analyze.</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                  {`{
+                    "on_chain_to_off_chain": { "0x123456...": 1234567890 },
+                    "off_chain_to_on_chain": { "0x123456...": 1234567890 }
+                  }`}
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>500: An error occurred during analysis</li>
+                </ul>
+              </li>
+              <li>
+                <strong>/api/calculate_metrics</strong>
+                <p>Description: Calculate various metrics for a given dataset.</p>
+                <p>Method: POST</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>transformed_data: The transformed dataset for which to calculate metrics.</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                  {`{
+                    "activity_score": 75,
+                    "risk_scores": { "targeted_attacks": 20, "dusting_attacks": 10, "draining": 15, "phishing": 5 },
+                    "opportunity_scores": { "investment": 30, "staking": 20, "tax_efficiency": 40 },
+                    "trust_scores": { "trusted_sources": 50, "trusted_recipients": 60, "wallet_trust": 70 },
+                    "volatility_scores": { "by_coin": 10, "by_wallet": 20 }
+                  }`}
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>400: Transformed data is required</li>
+                  <li>500: An error occurred during metric calculation</li>
+                </ul>
+              </li>
+              <li>
+                <strong>/api/analyze_smart_contract</strong>
+                <p>Description: Analyze a Solidity smart contract.</p>
+                <p>Method: POST</p>
+                <p>Parameters:</p>
+                <ul className="list-disc pl-5">
+                  <li>file: The Solidity (.sol) file to analyze.</li>
+                </ul>
+                <p>Response:</p>
+                <SyntaxHighlighter language="json" style={docco} className="code-snippet rounded">
+                  {`{
+                    "analysis": "Detailed analysis of the smart contract"
+                  }`}
+                </SyntaxHighlighter>
+                <p>Error Codes:</p>
+                <ul className="list-disc pl-5">
+                  <li>400: No file part or unsupported file type</li>
+                  <li>500: Failed to analyze smart contract</li>
+                </ul>
+              </li>
             </ul>
           </div>
         );
@@ -239,70 +414,96 @@ export default function Page() {
                   </div>
                 </div>
               </div>
+              <h3 className="text-lg font-semibold mt-4">Analyze Smart Contract Endpoint:</h3>
+              <div className="example bg-black-200 rounded p-4 scrollable-container">
+                <div className="grid grid-cols-1 gap-4 mt-4">
+                  <div className="code-container">
+                    <SyntaxHighlighter language="bash" style={docco} className="code-snippet rounded">
+                      {codeSnippet.curlAnalyzeSmartContract}
+                    </SyntaxHighlighter>
+                    <button
+                      className="copy-button"
+                      onClick={() => copyToClipboard(codeSnippet.curlAnalyzeSmartContract)}
+                    >
+                      {codeCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className="code-container">
+                    <SyntaxHighlighter language="javascript" style={docco} className="code-snippet rounded">
+                      {codeSnippet.jsAnalyzeSmartContract}
+                    </SyntaxHighlighter>
+                    <button
+                      className="copy-button"
+                      onClick={() => copyToClipboard(codeSnippet.jsAnalyzeSmartContract)}
+                    >
+                      {codeCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
       case 5:
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
-      <p>
-        Here you'll find answers to frequently asked questions about our API.
-      </p>
-      <div className="faq-section">
-      <h3 className="text-lg font-semibold mb-2">Feedback and Support</h3>
-        <p className="mb-4">
-          <strong>Q: How can I provide feedback or report issues?</strong><br />
-          A: We value your feedback and are here to help with any issues. Please email us at <a href="mailto:k3m@idefi.ai" className="text-blue-500 underline">k3m@idefi.ai</a> for support.
-        </p>
-        <h3 className="text-lg font-semibold mb-2">General Questions</h3>
-        <p className="mb-4">
-          <strong>Q: What is the purpose of this API?</strong><br />
-          A: Our API allows users to monitor Ethereum addresses, fetch transaction histories, and receive real-time updates on blockchain activity.
-        </p>
-        <h3 className="text-lg font-semibold mb-2">Account and API Keys</h3>
-        <p className="mb-4">
-          <strong>Q: How do I create an account?</strong><br />
-          A: You can create an account by signing up on our platform. Once your account is created, you will receive a user token and API keys.
-        </p>
-        <p className="mb-4">
-          <strong>Q: How do I obtain my API keys?</strong><br />
-          A: After logging into your account, navigate to the Developer Portal. You can generate and manage your API keys from there.
-        </p>
-        <p className="mb-4">
-          <strong>Q: What should I do if I lose my API keys?</strong><br />
-          A: If you lose your API keys, you can generate new ones from the Developer Portal. Ensure to update your applications with the new keys.
-        </p>
-        <h3 className="text-lg font-semibold mb-2">Using the API</h3>
-        <p className="mb-4">
-          <strong>Q: How do I authenticate API requests?</strong><br />
-          A: Each API request must include your API key in the headers. For example, you can include it as a Bearer token in the Authorization header.
-        </p>
-        <p className="mb-4">
-          <strong>Q: What are the main endpoints of the API?</strong><br />
-          A: The main endpoints include:
-          <ul className="list-disc list-inside ml-4">
-            <li><strong>/api/monitor_address</strong>: Start monitoring an Ethereum address.</li>
-            <li><strong>/api/get_transactions</strong>: Retrieve transaction history for an address.</li>
-            <li><strong>/api/get_user_tokens</strong>: Fetch all API tokens associated with your account.</li>
-          </ul>
-        </p>
-        <h3 className="text-lg font-semibold mb-2">Real-Time Monitoring</h3>
-        <p className="mb-4">
-          <strong>Q: How does the real-time monitoring work?</strong><br />
-          A: Once you start monitoring an address, the system will check for new transactions at regular intervals and update you with real-time notifications.
-        </p>
-        <p className="mb-4">
-          <strong>Q: Can I monitor multiple addresses at once?</strong><br />
-          A: Yes, you can monitor multiple Ethereum addresses simultaneously. Each address will have its own monitoring session.
-        </p>
-      </div>
-    </div>
-  );
-default:
-  return null;
-}
-
+        return (
+          <div>
+            <h2 className="text-xl font-bold mb-4">{selectedNavItem.label}</h2>
+            <p>
+              Here you'll find answers to frequently asked questions about our API.
+            </p>
+            <div className="faq-section">
+              <h3 className="text-lg font-semibold mb-2">Feedback and Support</h3>
+              <p className="mb-4">
+                <strong>Q: How can I provide feedback or report issues?</strong><br />
+                A: We value your feedback and are here to help with any issues. Please email us at <a href="mailto:k3m@idefi.ai" className="text-blue-500 underline">k3m@idefi.ai</a> for support.
+              </p>
+              <h3 className="text-lg font-semibold mb-2">General Questions</h3>
+              <p className="mb-4">
+                <strong>Q: What is the purpose of this API?</strong><br />
+                A: Our API allows users to monitor Ethereum addresses, fetch transaction histories, and receive real-time updates on blockchain activity.
+              </p>
+              <h3 className="text-lg font-semibold mb-2">Account and API Keys</h3>
+              <p className="mb-4">
+                <strong>Q: How do I create an account?</strong><br />
+                A: You can create an account by signing up on our platform. Once your account is created, you will receive a user token and API keys.
+              </p>
+              <p className="mb-4">
+                <strong>Q: How do I obtain my API keys?</strong><br />
+                A: After logging into your account, navigate to the Developer Portal. You can generate and manage your API keys from there.
+              </p>
+              <p className="mb-4">
+                <strong>Q: What should I do if I lose my API keys?</strong><br />
+                A: If you lose your API keys, you can generate new ones from the Developer Portal. Ensure to update your applications with the new keys.
+              </p>
+              <h3 className="text-lg font-semibold mb-2">Using the API</h3>
+              <p className="mb-4">
+                <strong>Q: How do I authenticate API requests?</strong><br />
+                A: Each API request must include your API key in the headers. For example, you can include it as a Bearer token in the Authorization header.
+              </p>
+              <p className="mb-4">
+                <strong>Q: What are the main endpoints of the API?</strong><br />
+                A: The main endpoints include:
+                <ul className="list-disc list-inside ml-4">
+                  <li><strong>/api/monitor_address</strong>: Start monitoring an Ethereum address.</li>
+                  <li><strong>/api/get_transactions</strong>: Retrieve transaction history for an address.</li>
+                  <li><strong>/api/get_user_tokens</strong>: Fetch all API tokens associated with your account.</li>
+                </ul>
+              </p>
+              <h3 className="text-lg font-semibold mb-2">Real-Time Monitoring</h3>
+              <p className="mb-4">
+                <strong>Q: How does the real-time monitoring work?</strong><br />
+                A: Once you start monitoring an address, the system will check for new transactions at regular intervals and update you with real-time notifications.
+              </p>
+              <p className="mb-4">
+                <strong>Q: Can I monitor multiple addresses at once?</strong><br />
+                A: Yes, you can monitor multiple Ethereum addresses simultaneously. Each address will have its own monitoring session.
+              </p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
