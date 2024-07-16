@@ -54,7 +54,7 @@ const FinancialAdvisorPage: React.FC = () => {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Enter Ethereum wallet address"
-          className="w-full p-2 border rounded mb-4"
+          className="w-full p-2 border rounded mb-4 text-black"
         />
         <button onClick={handleFetchRawData} disabled={loading} className="mt-4 p-2 bg-blue-500 text-white rounded">
           Fetch Data

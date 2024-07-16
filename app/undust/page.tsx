@@ -38,7 +38,7 @@ const CryptoWalletCheckPage: React.FC = () => {
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
           placeholder="Enter your wallet address"
-          className="wallet-input p-3 border rounded-md w-full mb-4 md:mb-0 md:mr-4"
+          className="wallet-input p-3 border rounded-md w-full mb-4 md:mb-0 md:mr-4 text-black"
         />
         <button onClick={handleCheckWallet} disabled={loading} className="check-button bg-blue-500 text-white p-3 rounded-md w-full md:w-auto">
           {loading ? 'Checking...' : 'Check Wallet'}
@@ -48,7 +48,7 @@ const CryptoWalletCheckPage: React.FC = () => {
       {error && <p className="error-message text-red-500 mb-4">{error}</p>}
       
       {checkResult && (
-        <div className="result w-full max-w-2xl bg-gray-100 p-6 rounded-md shadow-md">
+        <div className="result text-black w-full max-w-2xl bg-gray-100 p-6 rounded-md shadow-md">
           <h2 className="text-2xl font-bold mb-4">Check Result</h2>
           <pre className="result-json bg-white p-4 rounded-md mb-6 overflow-auto">
             {JSON.stringify(checkResult, null, 2)}

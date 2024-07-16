@@ -10,123 +10,62 @@ interface MetricsData {
   volatility_scores: any;
 }
 
-interface AddressCheckResult {
-  address: string;
-  description: string;
-  classification: 'pass' | 'fail' | 'pending';
-  transactionHash?: string;
-  from?: string;
-  to?: string;
-  parentTxnHash?: string;
-  etherscanUrl?: string;
-  insights?: any;
-  timestamp?: string; // Optional timestamp property
-  value?: string; // Optional value property
-  gasUsed?: string; // Optional gasUsed property
-  status?: string; // Optional status property
-}
-
 const MetricsPage: React.FC = () => {
+  const [address, setAddress] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [rawBlockchainData, setRawBlockchainData] = useState<any>(null);
   const [transformedData, setTransformedData] = useState<any>(null);
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
+  const [noTransactionsMessage, setNoTransactionsMessage] = useState<string>('');
 
   const handleFetchRawData = async () => {
+    if (!address) {
+      setLoadingMessage('Address is required');
+      return;
+    }
+
     setLoading(true);
     setLoadingMessage('Fetching raw blockchain data...');
     try {
-      const response = await fetch('https://api.idefi.ai/api/get_etherscan_data?address=YOUR_ADDRESS_HERE', {
+      const response = await fetch(`/api/get_data_and_metrics?address=${address}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
       console.log('Raw blockchain data:', data);
 
-      // Process raw data to include classification
-      const processedData = await processAddressCheck([data]);
-      setRawBlockchainData(processedData);
-      const transformed = transformRawData(processedData);
-      setTransformedData(transformed);
-      setMetrics(await fetchMetrics(transformed));
+      if (data.error) {
+        setNoTransactionsMessage(data.error);
+        setRawBlockchainData(null);
+        setTransformedData(null);
+        setMetrics(null);
+        setLoadingMessage('');
+        setLoading(false);
+        return;
+      }
+
+      setRawBlockchainData(data.raw_data);
+      setTransformedData(data.transformed_data);
+      setMetrics(data.metrics);
+      setLoadingMessage('');
     } catch (error) {
-      console.error('Error:', error);
-    }
-    setLoading(false);
-    setLoadingMessage('');
-  };
-
-  const processAddressCheck = async (data: any) => {
-    const flaggedAddresses = await fetchFlaggedAddresses();
-    const addressCheckResults: AddressCheckResult[] = data.map((tx: any) => {
-      const address = tx.to || tx.from;
-      const description = tx.description || 'Pending review';
-      const classification = flaggedAddresses.has(address.toLowerCase()) ? 'fail' : 'pass';
-      return {
-        address,
-        description,
-        classification,
-        transactionHash: tx.hash,
-        from: tx.from,
-        to: tx.to,
-        parentTxnHash: tx.hash,
-        etherscanUrl: `https://etherscan.io/tx/${tx.hash}`,
-        insights: tx.insights,
-        timestamp: tx.timestamp,
-        value: tx.value,
-        gasUsed: tx.gasUsed,
-        status: tx.status,
-      };
-    });
-
-    return addressCheckResults;
-  };
-
-  const fetchFlaggedAddresses = async () => {
-    const response = await fetch('https://api.idefi.ai/api/get_flagged_addresses');
-    const data = await response.json();
-    return new Set(data.map((addr: any) => addr.address.toLowerCase()));
-  };
-
-  const transformRawData = (data: AddressCheckResult[]) => {
-    if (!data) {
-      console.error('Invalid raw data:', data);
-      return null;
-    }
-
-    return {
-      transactions: data.map((tx) => ({
-        transactionHash: tx.transactionHash || '',
-        timestamp: tx.timestamp ? new Date(parseInt(tx.timestamp) * 1000).toISOString() : '',
-        from: tx.from || '',
-        to: tx.to || '',
-        value: tx.value ? `${parseFloat(tx.value) / 1e18} ETH` : '',
-        gasUsed: tx.gasUsed || '',
-        status: tx.status === '0' ? 'Success' : 'Failed',
-        description: tx.description || '',
-        classification: tx.classification || 'pending',
-        insights: tx.insights || {},
-      })),
-    };
-  };
-
-  const fetchMetrics = async (data: any) => {
-    try {
-      const response = await fetch('https://api.idefi.ai/api/calculate_metrics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ transformed_data: data }),
-      });
-      const metricsData = await response.json();
-      return metricsData;
-    } catch (error) {
-      console.error('Error fetching metrics:', error);
-      return null;
+      if (error instanceof Error) {
+        console.error('Error:', error.message);
+        setLoadingMessage(`Error: ${error.message}`);
+      } else {
+        console.error('Unknown error:', error);
+        setLoadingMessage('Unknown error occurred');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,9 +73,21 @@ const MetricsPage: React.FC = () => {
     <div className="container mx-auto min-h-screen flex flex-col items-center py-12 px-4 md:px-8 lg:px-16">
       <div className="section w-full max-w-4xl mb-8">
         <h2 className="text-2xl font-bold mb-4">Fetch and Analyze Blockchain Data</h2>
+        <input
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Enter Ethereum address"
+          className="w-full p-2 border rounded mb-4 text-black"
+        />
         <button onClick={handleFetchRawData} disabled={loading} className="mt-4 p-2 bg-blue-500 text-white rounded">
-          {loading && loadingMessage === 'Fetching raw blockchain data...' ? 'Loading...' : 'Fetch Data'}
+          {loading ? loadingMessage : 'Fetch Data'}
         </button>
+        {noTransactionsMessage && (
+          <div className="mt-4 p-4 bg-yellow-100 text-yellow-700 rounded">
+            {noTransactionsMessage}
+          </div>
+        )}
         {rawBlockchainData && transformedData && (
           <div className="comparison-container mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -161,23 +112,23 @@ const MetricsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-xl font-bold mb-2">Activity Score</h3>
-              <p className="bg-gray-100 p-4 rounded-md text-left overflow-auto">{metrics.activity_score}</p>
+              <p className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{metrics.activity_score}</p>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-2">Risk Scores</h3>
-              <pre className="bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.risk_scores, null, 2)}</pre>
+              <pre className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.risk_scores, null, 2)}</pre>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-2">Opportunity Scores</h3>
-              <pre className="bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.opportunity_scores, null, 2)}</pre>
+              <pre className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.opportunity_scores, null, 2)}</pre>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-2">Trust Scores</h3>
-              <pre className="bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.trust_scores, null, 2)}</pre>
+              <pre className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.trust_scores, null, 2)}</pre>
             </div>
             <div>
               <h3 className="text-xl font-bold mb-2">Volatility Scores</h3>
-              <pre className="bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.volatility_scores, null, 2)}</pre>
+              <pre className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.volatility_scores, null, 2)}</pre>
             </div>
           </div>
         </div>

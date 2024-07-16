@@ -401,19 +401,27 @@ def monitor_address():
     if not address:
         return jsonify({'error': 'Address parameter is required'}), 400
 
-    transactions = get_transaction_history(address)
-    return jsonify({'transactions': transactions})
+    try:
+        transactions = get_transaction_history(address)
+        if transactions:
+            return jsonify({'transactions': transactions})
+        else:
+            return jsonify({'error': 'No transactions found for the provided address'}), 404
+    except Exception as e:
+        app.logger.error(f"Error monitoring address: {e}")
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
 
 def get_transaction_history(address):
     try:
         url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&sort=asc&apikey={ETHERSCAN_API_KEY}'
         response = requests.get(url)
         if response.status_code != 200:
-            return []
+            raise Exception(f"Error fetching data from Etherscan API: {response.status_code}")
 
         data = response.json()
         if data['status'] != '1':
-            return []
+            raise Exception(f"No transactions found: {data['message']}")
 
         transactions = data['result']
         formatted_transactions = [{
@@ -421,12 +429,13 @@ def get_transaction_history(address):
             'from': tx['from'],
             'to': tx['to'],
             'value': int(tx['value']) / 1e18,  # Convert from Wei to Ether
-            'timestamp': int(tx['timeStamp'])
+            'timestamp': int(tx['timeStamp']),
+            'type': tx.get('type', 'Unknown')  # Assuming type may be missing
         } for tx in transactions]
 
         return formatted_transactions
     except Exception as e:
-        logger.error(f"Error fetching transaction history: {e}")
+        app.logger.error(f"Error fetching transaction history: {e}")
         return []
 
 def check_dusting_patterns(wallet_address):
@@ -465,6 +474,17 @@ def check_dusting_patterns(wallet_address):
     return dusting_patterns
 
 
+# Function to provide recommendations based on dusting patterns
+def provide_dusting_recommendations(dusting_patterns):
+    recommendations = []
+    if dusting_patterns:
+        recommendations.append("Your wallet has been dusted. It's recommended to not interact with these dust transactions.")
+        recommendations.append("Consider using a different wallet address for your transactions.")
+        recommendations.append("Monitor your wallet closely for any unauthorized transactions.")
+    else:
+        recommendations.append("No dusting patterns detected. Your wallet appears to be safe.")
+    return recommendations
+
 @app.route('/api/dustcheck', methods=['GET'])
 def dust_check_endpoint():
     address = request.args.get('address')
@@ -490,6 +510,7 @@ def dust_check_endpoint():
     }
 
     return jsonify(response_data)
+
 
 # New endpoint for analyzing smart contracts
 @app.route('/api/analyze_smart_contract', methods=['POST'])
@@ -529,41 +550,71 @@ def analyze_smart_contract():
     else:
         return jsonify({'error': 'Unsupported file type. Only .sol files are allowed'}), 400
 
-# New endpoint to fetch etherscan data with address as query parameter
-@app.route('/api/get_etherscan_data', methods=['GET'])
-def get_etherscan_data():
+@app.route('/api/get_data_and_metrics', methods=['GET'])
+def get_data_and_metrics():
     try:
-        # Fetch address from query parameters
         address = request.args.get('address')
         if not address:
             return jsonify({'error': 'Address parameter is required'}), 400
-        
-        url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}&page=1&offset=1'
-        
-        app.logger.debug(f"Fetching data from URL: {url}")
+
+        # Load unique addresses and flagged addresses
+        unique_addresses = load_unique_addresses()
+        flagged_addresses = load_flagged_addresses()
+
+        # Fetch data from Etherscan
+        url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}'
         response = requests.get(url)
-        response.raise_for_status()  # Raise HTTPError for bad responses
-
+        response.raise_for_status()
         data = response.json()
-        app.logger.debug(f"Response data: {data}")
 
-        if 'result' in data:
-            if data['result']:
-                app.logger.debug(f"Returning first transaction: {data['result'][0]}")
-                return jsonify(data['result'][0])  # Return only the first transaction
-            else:
-                app.logger.debug("No transactions found in 'result'")
-                return jsonify({'error': 'No transactions found'}), 404
-        else:
-            app.logger.debug("'result' field not found in response")
-            return jsonify({'error': "'result' field not found in response"}), 500
+        if 'result' not in data or not data['result']:
+            return jsonify({'error': 'No transactions found'}), 404
+
+        transactions = data['result']
+
+        # Check if the address is flagged
+        description = check_wallet_address(address, unique_addresses, flagged_addresses)
+        classification = 'fail' if 'Flagged' in description else 'pass'
+
+        # Transform data
+        transformed_data = {
+            'address': address,
+            'transactions': [{
+                'transactionHash': tx['hash'],
+                'timestamp': int(tx['timeStamp']),
+                'from': tx['from'],
+                'to': tx['to'],
+                'value': int(tx['value']) / 1e18,  # Convert from Wei to Ether
+                'gasUsed': tx['gasUsed'],
+                'status': 'Success' if tx['txreceipt_status'] == '1' else 'Failed',
+                'description': description if tx['to'].lower() in unique_addresses or tx['from'].lower() in unique_addresses else 'Regular transaction',
+                'classification': classification,
+                'insights': {}
+            } for tx in transactions]
+        }
+
+        # Calculate metrics
+        metrics = {
+            "activity_score": calculate_activity_score(transformed_data),
+            "risk_scores": calculate_risk_scores(transformed_data),
+            "opportunity_scores": calculate_opportunity_scores(transformed_data),
+            "trust_scores": calculate_trust_scores(transformed_data),
+            "volatility_scores": calculate_volatility_scores(transformed_data)
+        }
+
+        return jsonify({
+            'raw_data': transactions,
+            'transformed_data': transformed_data,
+            'metrics': metrics
+        })
 
     except requests.exceptions.RequestException as e:
-        app.logger.error(f"RequestException: {e}")
+        logger.error(f"RequestException: {e}")
         return jsonify({'error': f'Failed to fetch data from Etherscan: {e}'}), 500
     except Exception as e:
-        app.logger.error(f"Exception: {e}")
+        logger.error(f"Exception: {e}")
         return jsonify({'error': f'An error occurred: {e}'}), 500
+
 
 # Endpoint to fetch on-chain and off-chain transaction analysis
 @app.route('/api/analyze_transactions', methods=['POST'])

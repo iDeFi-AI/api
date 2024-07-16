@@ -31,6 +31,7 @@ const MonitorPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const chartRefs = useRef<{ [address: string]: any }>({});
+  const intervalRefs = useRef<{ [address: string]: NodeJS.Timeout }>({});
 
   const addAddress = () => {
     if (address && !addresses.includes(address)) {
@@ -60,6 +61,11 @@ const MonitorPage: React.FC = () => {
       delete newMonitoring[addressToRemove];
       return newMonitoring;
     });
+
+    if (intervalRefs.current[addressToRemove]) {
+      clearInterval(intervalRefs.current[addressToRemove]);
+      delete intervalRefs.current[addressToRemove];
+    }
   };
 
   const startMonitoring = async (address: string) => {
@@ -83,9 +89,9 @@ const MonitorPage: React.FC = () => {
           ...prevData,
           [address]: data.transactions,
         }));
+      } else {
+        setError(data.error || 'Unknown error occurred');
       }
-
-      setError('');
     } catch (error: any) {
       setError(error.message || 'Unknown error occurred');
     } finally {
@@ -100,7 +106,12 @@ const MonitorPage: React.FC = () => {
           startMonitoring(address);
         }, 60000);
 
-        return () => clearInterval(interval);
+        intervalRefs.current[address] = interval;
+
+        return () => {
+          clearInterval(intervalRefs.current[address]);
+          delete intervalRefs.current[address];
+        };
       }
     });
   }, [monitoring, addresses]);
@@ -141,7 +152,7 @@ const MonitorPage: React.FC = () => {
         callbacks: {
           label: (tooltipItem: any) => {
             const tx = monitoredData[addresses[tooltipItem.datasetIndex]][tooltipItem.dataIndex];
-            return `Value: ${tx.value} ETH\nType: ${tx.type}\nTimestamp: ${new Date(tx.timestamp * 1000).toLocaleString()}`;
+            return `Value: ${tx.value} ETH\nType: ${tx.type || 'Unknown'}\nTimestamp: ${new Date(tx.timestamp * 1000).toLocaleString()}`;
           },
         },
       },

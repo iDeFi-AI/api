@@ -89,7 +89,7 @@ const SmartContractAnalyzer: React.FC = () => {
           value={contractAddress}
           onChange={(e) => setContractAddress(e.target.value)}
           placeholder="Enter smart contract address"
-          className="p-3 border rounded-md w-full mb-4 md:mb-0 md:mr-4"
+          className="p-3 border rounded-md w-full mb-4 md:mb-0 md:mr-4 text-black"
         />
         <button onClick={handleAnalyzeAddress} className="bg-blue-500 text-white p-3 rounded-md w-full md:w-auto">
           Analyze Address
