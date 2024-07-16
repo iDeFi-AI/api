@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Disclosure } from '@headlessui/react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import NextImage from 'next/image';
 import Link from 'next/link';
 
 import LogoImage from '@/public/apilogo.png';
-
 import HeaderNavLink from './HeaderNavLink';
 
 const menuItems = [
-  { label: `Docs`, url: `docs` },
-  { label: `Devs`, url: `devs` },
-  { label: `Metrics`, url: `metrics`},
-  { label: `Monitor`, url: `monitor` },
-  { label: `Firewall`, url: `firewall` },
-  { label: `Contracts`, url: `smartscan`},
-  { label: `DustCheck`, url: `undust`},
-  { label: `TxMapping`, url: `txmap`},
+  { label: 'Docs', url: 'docs' },
+  { label: 'Devs', url: 'devs' },
+  { label: 'Metrics', url: 'metrics' },
+  { 
+    label: 'Security',
+    children: [
+      { label: 'Monitor', url: 'monitor' },
+      { label: 'Firewall', url: 'firewall' },
+      { label: 'Contracts', url: 'smartscan' },
+      { label: 'DustCheck', url: 'undust' },
+      { label: 'TxMapping', url: 'txmap' },
+    ],
+  },
   { label: 'Log out', url: '/' },
 ];
 
@@ -25,18 +29,11 @@ const NavMenu: React.FC<NavMenuProps> = ({}) => {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      setIsScrolled(window.scrollY > 10);
     };
 
     window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
@@ -58,20 +55,39 @@ const NavMenu: React.FC<NavMenuProps> = ({}) => {
                   </Link>
                 </div>
               </div>
-              <div className='flex flex-1 items-center justify-center px-2 lg:ml-6 lg:justify-end'></div>
-              <div className='flex px-2 lg:px-0'>
-                <div className='hidden lg:ml-6 lg:flex lg:space-x-8'>
-                  {menuItems.map((item) => (
-                    <HeaderNavLink href={item.url} key={item.url}>
-                      {item.label === 'Launch App' ? (
-                        <button className='text-white bg-purple-400 px-3 py-2 rounded-full'>
-                          {item.label}
-                        </button>
-                      ) : (
-                        item.label
-                      )}
-                    </HeaderNavLink>
-                  ))}
+              <div className='flex flex-1 items-center justify-center px-2 lg:ml-6 lg:justify-end'>
+                <div className='hidden lg:flex lg:space-x-8'>
+                  {menuItems.map((item) =>
+                    item.children ? (
+                      <div className='relative' key={item.label}>
+                        <Disclosure>
+                          {({ open }) => (
+                            <>
+                              <Disclosure.Button className='inline-flex items-center space-x-1 text-gray-700 hover:text-lightlaven'>
+                                <span className='text-sm font-medium'>{item.label}</span>
+                                <ChevronDownIcon className={`h-5 w-5 transform ${open ? 'rotate-180' : 'rotate-0'}`} />
+                              </Disclosure.Button>
+                              <Disclosure.Panel className='absolute mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5'>
+                                <div className='py-1'>
+                                  {item.children.map((subItem) => (
+                                    <Link href={subItem.url} key={subItem.label}>
+                                      <div className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-lightlaven'>
+                                        {subItem.label}
+                                      </div>
+                                    </Link>
+                                  ))}
+                                </div>
+                              </Disclosure.Panel>
+                            </>
+                          )}
+                        </Disclosure>
+                      </div>
+                    ) : (
+                      <HeaderNavLink href={item.url} key={item.label}>
+                        {item.label}
+                      </HeaderNavLink>
+                    )
+                  )}
                 </div>
               </div>
               <div className='flex items-center lg:hidden'>
@@ -91,21 +107,35 @@ const NavMenu: React.FC<NavMenuProps> = ({}) => {
 
           <Disclosure.Panel className='lg:hidden'>
             <div className='flex flex-col items-center space-y-2 py-3'>
-              {menuItems.map((item) => {
-                return (
-                  <Link href={item.url} key={item.label}>
-                  <div className='block py-2 text-base font-medium text-gray-600 hover:text-lightlaven'>
-                    {item.label === 'Launch App' ? (
-                      <button className='text-white bg-purple-400 px-3 py-2 rounded-full'>
-                        {item.label}
-                      </button>
-                    ) : (
-                      item.label
+              {menuItems.map((item) => (
+                item.children ? (
+                  <Disclosure key={item.label} as='div'>
+                    {({ open }) => (
+                      <>
+                        <Disclosure.Button className='flex w-full items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-lightlaven'>
+                          <span className='text-sm font-medium'>{item.label}</span>
+                          <ChevronDownIcon className={`h-5 w-5 transform ${open ? 'rotate-180' : 'rotate-0'}`} />
+                        </Disclosure.Button>
+                        <Disclosure.Panel className='space-y-1'>
+                          {item.children.map((subItem) => (
+                            <Link href={subItem.url} key={subItem.label}>
+                              <div className='block px-4 py-2 text-center text-sm text-gray-700 hover:bg-gray-100 hover:text-lightlaven'>
+                                {subItem.label}
+                              </div>
+                            </Link>
+                          ))}
+                        </Disclosure.Panel>
+                      </>
                     )}
-                  </div>
-                </Link>
-                );
-              })}
+                  </Disclosure>
+                ) : (
+                  <Link href={item.url} key={item.label}>
+                    <div className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-lightlaven'>
+                      {item.label}
+                    </div>
+                  </Link>
+                )
+              ))}
             </div>
           </Disclosure.Panel>
         </>

@@ -7,6 +7,7 @@ const SmartContractAnalyzer: React.FC = () => {
   const [contractAddress, setContractAddress] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
@@ -20,13 +21,14 @@ const SmartContractAnalyzer: React.FC = () => {
       return;
     }
 
+    setLoading(true);
     const formData = new FormData();
     formData.append('file', selectedFile);
 
     try {
       const response = await fetch('/api/analyze_smart_contract', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {
@@ -39,6 +41,8 @@ const SmartContractAnalyzer: React.FC = () => {
     } catch (err) {
       setError('Failed to analyze the smart contract');
       setAnalysisResult(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,6 +52,7 @@ const SmartContractAnalyzer: React.FC = () => {
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch(`/api/analyze_contract_address?address=${contractAddress}`);
       const data = await response.json();
@@ -61,6 +66,8 @@ const SmartContractAnalyzer: React.FC = () => {
     } catch (error) {
       setError('An error occurred while analyzing the smart contract address. Please try again.');
       setAnalysisResult(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,6 +97,8 @@ const SmartContractAnalyzer: React.FC = () => {
       </div>
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
+
+      {loading && <p className="text-blue-500 mt-4">Loading...</p>}
 
       {analysisResult && (
         <div className="result w-full max-w-2xl bg-gray-100 p-6 rounded-md shadow-md mt-6">

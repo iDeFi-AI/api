@@ -1,10 +1,17 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { getDatabase, ref, set, child, get, remove, onValue, push } from 'firebase/database';
+import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
+import { getDatabase, ref, set, child, get, remove, push, onValue } from 'firebase/database';
+import Web3 from 'web3';
+
+// Extend the Window interface to include the ethereum property
+declare global {
+  interface Window {
+    ethereum: any;
+  }
+}
 
 // Firebase configuration
 const firebaseConfig = {
-
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: "api-idefi-ai.firebaseapp.com",
   databaseURL: "https://api-idefi-ai-default-rtdb.firebaseio.com",
@@ -20,6 +27,13 @@ const auth = getAuth(app);
 const database = getDatabase(app);
 const jsondataRef = ref(database, 'jsondata');
 
+// Providers
+const googleProvider = new GoogleAuthProvider();
+const githubProvider = new GithubAuthProvider();
+
+// Sign-in functions
+const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+const signInWithGithub = () => signInWithPopup(auth, githubProvider);
 
 // Set persistence
 setPersistence(auth, browserLocalPersistence)
@@ -37,6 +51,26 @@ const createAccountWithEmailPassword = (email: string, password: string) =>
 const signInWithEmailPassword = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password);
 
+// Web3 Authentication
+const web3 = new Web3(Web3.givenProvider || "ws://localhost:8545");
+
+const signInWithWeb3 = async () => {
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const account = accounts[0];
+      const message = 'Log in to iDeFi.AI';
+      const signature = await web3.eth.personal.sign(message, account, '');
+      return { account, signature };
+    } catch (error) {
+      console.error('Error signing in with Web3', error);
+      throw error;
+    }
+  } else {
+    throw new Error('MetaMask is not installed');
+  }
+};
+
 // Realtime Database references
 const apiTokensRef = ref(database, 'apiTokens');
 const apiKeysRef = ref(database, 'apiKeys');
@@ -44,9 +78,7 @@ const apiKeysRef = ref(database, 'apiKeys');
 const storeApiToken = (partnerId: string, apiToken: string) =>
   set(child(apiTokensRef, partnerId), apiToken);
 
-const storeJsonData = (jsonData: any) => {
-    return push(jsondataRef, jsonData);
-  };
+const storeJsonData = (jsonData: any) => push(jsondataRef, jsonData);
 
 const storeApiKey = (uid: string, apiKey: string) =>
   set(child(apiKeysRef, uid), apiKey);
@@ -69,6 +101,9 @@ export {
   auth,
   createAccountWithEmailPassword,
   signInWithEmailPassword,
+  signInWithGoogle,
+  signInWithGithub,
+  signInWithWeb3,
   storeApiToken,
   storeApiKey,
   storeJsonData,
@@ -81,7 +116,7 @@ export {
   remove,
   ref,
   set,
-  onValue,
   get,
+  onValue,
   push
 };

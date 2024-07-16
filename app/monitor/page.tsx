@@ -29,6 +29,7 @@ const MonitorPage: React.FC = () => {
   const [monitoredData, setMonitoredData] = useState<{ [address: string]: any[] }>({});
   const [monitoring, setMonitoring] = useState<{ [address: string]: boolean }>({});
   const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
   const chartRefs = useRef<{ [address: string]: any }>({});
 
   const addAddress = () => {
@@ -63,6 +64,7 @@ const MonitorPage: React.FC = () => {
 
   const startMonitoring = async (address: string) => {
     try {
+      setLoading(true);
       const response = await fetch('/api/monitor_address', {
         method: 'POST',
         headers: {
@@ -86,6 +88,8 @@ const MonitorPage: React.FC = () => {
       setError('');
     } catch (error: any) {
       setError(error.message || 'Unknown error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -156,7 +160,9 @@ const MonitorPage: React.FC = () => {
           placeholder="Enter Ethereum address"
         />
         <div className="buttons">
-          <button className="start" onClick={addAddress}>Add Address</button>
+          <button className="start" onClick={addAddress} disabled={loading}>
+            {loading ? 'Adding...' : 'Add Address'}
+          </button>
         </div>
       </div>
       <div className="monitoring-section">
@@ -171,8 +177,12 @@ const MonitorPage: React.FC = () => {
               />
             </div>
             <div className="buttons">
-              <button className="stop" onClick={() => removeAddress(address)}>Stop Monitoring</button>
-              <button className="download" onClick={() => handleDownload(address)}>Download Graph</button>
+              <button className="stop" onClick={() => removeAddress(address)} disabled={loading}>
+                {loading ? 'Stopping...' : 'Stop Monitoring'}
+              </button>
+              <button className="download" onClick={() => handleDownload(address)}>
+                Download Graph
+              </button>
               {monitoring[address] && <div className="blinking-dot"></div>}
             </div>
           </div>
