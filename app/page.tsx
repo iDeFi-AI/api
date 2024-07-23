@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { auth, createAccountWithEmailPassword, signInWithEmailPassword, setPersistence, browserLocalPersistence, database, ref, set, signInWithGoogle, signInWithGithub, signInWithWeb3 } from '@/utilities/firebaseClient';
+import { auth, createAccountWithEmailPassword, signInWithEmailPassword, setPersistence, browserLocalPersistence, database, ref, set, signInWithGoogle, signInWithGithub, signInWithWeb3, signInAnonymously } from '@/utilities/firebaseClient';
 import Image from 'next/image';
 
 export default function Home() {
@@ -83,53 +83,67 @@ export default function Home() {
 
   const handleGoogleSignIn = async (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
+      setLoading(true);
+      setError('');
       const result = await signInWithGoogle();
       const user = result.user;
-      if(user){
-        try {
-          const idToken = await user.getIdToken(true);
-          console.log('Token: ', idToken);
-          window.location.href = '/dataroom';
-        } catch(error) {
-          console.log('Error retrieving token', error);
-        }
-      } 
-    } catch(error: any) {
+
+      await setPersistence(auth, browserLocalPersistence);
+
+      const token = await generateToken(user.uid);
+      await saveUserData(user.uid, token);
+      window.location.href = '/devs';
+    } catch (error: any) {
       console.error("Error signing in with Google", error.message);
+      setError('Error signing in with Google. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGithubSignIn = async (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
+      setLoading(true);
+      setError('');
       const result = await signInWithGithub();
       const user = result.user;
-      if(user){
-        try {
-          const idToken = await user.getIdToken(true);
-          console.log('Token: ', idToken);
-          window.location.href = '/dataroom';
-        } catch(error) {
-          console.log('Error retrieving token', error);
-        }
-      } 
-    } catch(error: any) {
+
+      await setPersistence(auth, browserLocalPersistence);
+
+      const token = await generateToken(user.uid);
+      await saveUserData(user.uid, token);
+      window.location.href = '/devs';
+    } catch (error: any) {
       console.error("Error signing in with GitHub", error.message);
+      setError('Error signing in with GitHub. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleWeb3SignIn = async (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
+      setLoading(true);
+      setError('');
       const result = await signInWithWeb3();
-      console.log('Web3 SignIn Result: ', result);
-      window.location.href = '/dataroom';
+      const { user: { account }, signature } = result;
+
+      await setPersistence(auth, browserLocalPersistence);
+
+      const token = await generateToken(account);
+      await saveUserData(account, token);
+      window.location.href = '/devs';
     } catch (error) {
       console.error("Error signing in with Web3", error);
+      setError('Error signing in with Web3. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <main className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <Image src='/mainlogo.png' alt="Company Logo" width={200} height={200} />
+    <main className="flex flex-col items-center justify-center h-screen bg-white">
+      <Image src='/cube.gif' alt="Company Logo" width={200} height={200} />
       <br />
       <h1 className="text-3xl mb-4 text-black">API iDeFi.AI</h1>
       <br />

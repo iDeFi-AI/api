@@ -127,8 +127,8 @@ const MonitorPage: React.FC = () => {
         {
           label: 'Transaction Value (ETH)',
           data,
-          borderColor: 'rgba(75, 192, 192, 1)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
           fill: true,
         },
       ],
@@ -157,13 +157,21 @@ const MonitorPage: React.FC = () => {
         },
       },
     },
+    scales: {
+      x: {
+        ticks: { color: 'black' },
+      },
+      y: {
+        ticks: { color: 'black' },
+      },
+    },
   };
 
   return (
-    <div className="monitor-page mt-8">
-      <h1>Ethereum Heart Monitor</h1>
+    <div className="monitor-page">
+      <h2>Ethereum Heart Monitor</h2>
       <h3>BETA</h3>
-      <div className="input-section text-black">
+      <div className="input-section">
         <input
           type="text"
           value={address}
@@ -194,12 +202,12 @@ const MonitorPage: React.FC = () => {
               <button className="download" onClick={() => handleDownload(address)}>
                 Download Graph
               </button>
-              {monitoring[address] && <div className="blinking-dot"></div>}
+              {monitoring[address] && <div className="pulse-animation"><div className="dot"></div></div>}
             </div>
           </div>
         ))}
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error-message">{error}</p>}
     </div>
   );
 };

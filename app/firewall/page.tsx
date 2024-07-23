@@ -260,6 +260,7 @@ const FirewallPage: React.FC = () => {
           margin-bottom: 10px;
           resize: vertical;
           font-size: 16px;
+          border: 2px solid #000;
         }
         input[type="file"] {
           width: 100%;
@@ -269,14 +270,14 @@ const FirewallPage: React.FC = () => {
           padding: 10px 20px;
           margin-top: 10px;
           cursor: pointer;
-          background-color: #913D88;
+          background-color: #ff9f66;
           color: #fff;
           border: none;
           border-radius: 5px;
           font-size: 16px;
         }
         button:hover {
-          background-color: #6b2d65;
+          background-color: #ff5733;
         }
         .error {
           color: red;
@@ -312,7 +313,8 @@ const FirewallPage: React.FC = () => {
         }
         .history-container {
           width: 100%;
-          margin-top: 20px;
+          max-width: 600px;
+          margin-top: 60px;
           padding: 20px;
           background-color: #f8f9fa;
           border-radius: 5px;

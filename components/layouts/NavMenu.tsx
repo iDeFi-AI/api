@@ -10,10 +10,10 @@ import HeaderNavLink from './HeaderNavLink';
 const menuItems = [
   { label: 'Docs', url: 'docs' },
   { label: 'Devs', url: 'devs' },
-  { label: 'Metrics', url: 'metrics' },
   { 
-    label: 'Security',
+    label: 'Examples',
     children: [
+      { label: 'Metrics', url: 'metrics' },
       { label: 'Monitor', url: 'monitor' },
       { label: 'Firewall', url: 'firewall' },
       { label: 'Contracts', url: 'smartscan' },

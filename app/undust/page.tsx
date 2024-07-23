@@ -40,8 +40,8 @@ const CryptoWalletCheckPage: React.FC = () => {
           placeholder="Enter your wallet address"
           className="wallet-input p-3 border rounded-md w-full mb-4 md:mb-0 md:mr-4 text-black"
         />
-        <button onClick={handleCheckWallet} disabled={loading} className="check-button bg-blue-500 text-white p-3 rounded-md w-full md:w-auto">
-          {loading ? 'Checking...' : 'Check Wallet'}
+        <button onClick={handleCheckWallet} disabled={loading} className="check-button bg-neorange text-white p-3 rounded-md w-full md:w-auto">
+          {loading ? 'Checking...' : 'Check'}
         </button>
       </div>
 

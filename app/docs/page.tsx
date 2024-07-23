@@ -128,7 +128,7 @@ export default function Page() {
               your token and API key details.
             </p>
             <div className="mt-6">
-              <label className="block text-lightlaven font-bold mb-2">Your API Key:</label>
+              <label className="block text-neorange font-bold mb-2">Your API Key:</label>
               <div className="flex items-center border border-gray-400 rounded-md p-2 mb-2">
                 <input
                   type="text"
@@ -145,11 +145,11 @@ export default function Page() {
               </div>
               <p>If you don't see an API Key. Please visit the Developer Portal to generate and manage your API Keys</p>
               <Link href="/devs" passHref>
-                <button className="bg-white hover:bg-green-500 text-black hover:text-white font-bold py-2 px-4 rounded mb-12">Dev Portal</button>
+                <button className="bg-neorange hover:bg-neohover text-black hover:text-white font-bold py-2 px-4 rounded mb-12">Dev Portal</button>
               </Link>
             </div>
             <div className="mt-6">
-              <label className="block text-lightlaven font-bold mb-2">Your Access Token:</label>
+              <label className="block text-neorange font-bold mb-2">Your Access Token:</label>
               <div className="flex items-center border border-gray-400 rounded-md p-2 mb-2">
                 <input
                   type="text"
@@ -533,7 +533,7 @@ export default function Page() {
         }
         .nav-container {
           width: 20%;
-          background-color: #000000;
+          background-color: #ffffff;
           padding: 10px;
           position: fixed;
           height: 100vh;
@@ -549,7 +549,8 @@ export default function Page() {
         }
         .nav-container .active {
           font-weight: bold;
-          color: #913D88;
+          color: #ff9f66;
+          border-radius: 10px;
         }
         .content-container {
           width: 80%;

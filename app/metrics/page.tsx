@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { generateAddressCheckPrompt } from '@/utilities/GenAiFirewall';
 
 interface MetricsData {
   activity_score: number;
@@ -18,6 +19,7 @@ const MetricsPage: React.FC = () => {
   const [transformedData, setTransformedData] = useState<any>(null);
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [noTransactionsMessage, setNoTransactionsMessage] = useState<string>('');
+  const [insights, setInsights] = useState<string>('');
 
   const handleFetchRawData = async () => {
     if (!address) {
@@ -47,6 +49,7 @@ const MetricsPage: React.FC = () => {
         setRawBlockchainData(null);
         setTransformedData(null);
         setMetrics(null);
+        setInsights('');
         setLoadingMessage('');
         setLoading(false);
         return;
@@ -55,6 +58,16 @@ const MetricsPage: React.FC = () => {
       setRawBlockchainData(data.raw_data);
       setTransformedData(data.transformed_data);
       setMetrics(data.metrics);
+
+      // Generate AI insights using OpenAI API
+      setLoadingMessage('Generating insights...');
+      const promptContent = {
+        addresses: [address],
+        results: data.transformed_data.transactions.map((tx: any) => tx.description)
+      };
+      const generatedInsights = await generateAddressCheckPrompt(promptContent);
+      setInsights(generatedInsights);
+
       setLoadingMessage('');
     } catch (error) {
       if (error instanceof Error) {
@@ -72,7 +85,7 @@ const MetricsPage: React.FC = () => {
   return (
     <div className="container mx-auto min-h-screen flex flex-col items-center py-12 px-4 md:px-8 lg:px-16">
       <div className="section w-full max-w-4xl mb-8">
-        <h2 className="text-2xl font-bold mb-4">Fetch and Analyze Blockchain Data</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center">Fetch and Analyze Blockchain Data</h2>
         <input
           type="text"
           value={address}
@@ -131,6 +144,13 @@ const MetricsPage: React.FC = () => {
               <pre className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{JSON.stringify(metrics.volatility_scores, null, 2)}</pre>
             </div>
           </div>
+        </div>
+      )}
+
+      {insights && (
+        <div className="section w-full max-w-4xl mb-8">
+          <h2 className="text-2xl font-bold mb-4">Insights</h2>
+          <pre className="text-black bg-gray-100 p-4 rounded-md text-left overflow-auto">{insights}</pre>
         </div>
       )}
     </div>

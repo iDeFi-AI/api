@@ -4,6 +4,8 @@ import logging
 import base64
 import re
 import json
+import threading
+import time
 from flask import Flask, request, jsonify, send_file, url_for, make_response
 import firebase_admin
 from firebase_admin import credentials, db, auth, initialize_app, storage
@@ -23,16 +25,12 @@ logger = logging.getLogger(__name__)
 
 # Get the base64-encoded service account key string
 firebase_service_account_key_base64 = os.getenv('NEXT_PUBLIC_FIREBASE_SERVICE_ACCOUNT_KEY')
-
 if not firebase_service_account_key_base64:
     raise ValueError("Missing Firebase service account key environment variable")
-
 # Decode the base64-encoded string to bytes
 firebase_service_account_key_bytes = base64.b64decode(firebase_service_account_key_base64)
-
 # Convert bytes to JSON string
 firebase_service_account_key_str = firebase_service_account_key_bytes.decode('utf-8')
-
 # Initialize Firebase Admin SDK
 try:
     firebase_service_account_key_dict = json.loads(firebase_service_account_key_str)
@@ -52,6 +50,9 @@ except Exception as e:
 # Get a reference to the Firebase Realtime Database and Storage
 database = db.reference()
 bucket = storage.bucket()
+
+# Define Coinbase origin address
+COINBASE_ORIGIN_ADDRESS = '0xa9d1e08c7793af67e9d92fe308d5697fb81d3e43'
 
 # Define the directory containing the .json files
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'upload')
@@ -550,6 +551,83 @@ def analyze_smart_contract():
     else:
         return jsonify({'error': 'Unsupported file type. Only .sol files are allowed'}), 400
 
+# Utility functions
+def fetch_transactions(address):
+    url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}'
+    response = requests.get(url)
+    data = response.json()
+    return data['result'] if data['status'] == '1' else []
+
+def fetch_internal_transactions(address):
+    url = f'https://api.etherscan.io/api?module=account&action=txlistinternal&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}'
+    response = requests.get(url)
+    data = response.json()
+    return data['result'] if data['status'] == '1' else []
+
+def fetch_token_transfers(address):
+    url = f'https://api.etherscan.io/api?module=account&action=tokentx&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}'
+    response = requests.get(url)
+    data = response.json()
+    return data['result'] if data['status'] == '1' else []
+
+def calculate_metrics(address, transactions, token_transfers):
+    metrics = {}
+    eth_sent = sum(float(tx['value']) for tx in transactions if tx['from'].lower() == address.lower())
+    eth_received = sum(float(tx['value']) for tx in transactions if tx['to'].lower() == address.lower())
+    avg_gas_price = sum(float(tx['gasPrice']) for tx in transactions) / len(transactions)
+    
+    metrics['Total ETH Sent'] = eth_sent / 1e18
+    metrics['Total ETH Received'] = eth_received / 1e18
+    metrics['Average Gas Price (Gwei)'] = avg_gas_price / 1e9
+    
+    token_counts = {}
+    for tx in token_transfers:
+        token_symbol = tx['tokenSymbol']
+        if token_symbol not in token_counts:
+            token_counts[token_symbol] = 0
+        token_counts[token_symbol] += 1
+    
+    metrics['Token Transfers'] = token_counts
+    return metrics
+
+def calculate_capital_gains(address, transactions):
+    purchase_history = []
+    capital_gains = 0.0
+    for tx in transactions:
+        if tx['to'].lower() == address.lower():
+            purchase_history.append({
+                'date': datetime.datetime.fromtimestamp(int(tx['timeStamp'])),
+                'amount': float(tx['value']) / 1e18,
+                'price': 2000.0  # Example purchase price, replace with real-time price
+            })
+        elif tx['from'].lower() == address.lower():
+            sale_amount = float(tx['value']) / 1e18
+            sale_price = 3000.0  # Example sale price, replace with real-time price
+            for purchase in purchase_history:
+                if sale_amount == 0:
+                    break
+                if purchase['amount'] <= sale_amount:
+                    gain = (sale_price - purchase['price']) * purchase['amount']
+                    capital_gains += gain
+                    sale_amount -= purchase['amount']
+                    purchase_history.remove(purchase)
+                else:
+                    gain = (sale_price - purchase['price']) * sale_amount
+                    capital_gains += gain
+                    purchase['amount'] -= sale_amount
+                    sale_amount = 0
+    return capital_gains
+
+def process_data(address, transactions, internal_transactions, token_transfers):
+    metrics = calculate_metrics(address, transactions, token_transfers)
+    capital_gains = calculate_capital_gains(address, transactions)
+    
+    store_data(address, transactions, metrics, capital_gains)
+
+def store_data(address, transactions, metrics, capital_gains):
+    # Implement storage logic, e.g., save to a database or update a cache
+    pass
+
 @app.route('/api/get_data_and_metrics', methods=['GET'])
 def get_data_and_metrics():
     try:
@@ -557,49 +635,23 @@ def get_data_and_metrics():
         if not address:
             return jsonify({'error': 'Address parameter is required'}), 400
 
-        # Load unique addresses and flagged addresses
-        unique_addresses = load_unique_addresses()
-        flagged_addresses = load_flagged_addresses()
-
-        # Fetch data from Etherscan
-        url = f'https://api.etherscan.io/api?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&sort=asc&apikey={ETHERSCAN_API_KEY}'
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-
-        if 'result' not in data or not data['result']:
+        transactions = fetch_transactions(address)
+        internal_transactions = fetch_internal_transactions(address)
+        token_transfers = fetch_token_transfers(address)
+        
+        if not transactions:
             return jsonify({'error': 'No transactions found'}), 404
+        
+        metrics = calculate_metrics(address, transactions, token_transfers)
+        capital_gains = calculate_capital_gains(address, transactions)
+        
+        metrics['Capital Gains'] = capital_gains
 
-        transactions = data['result']
-
-        # Check if the address is flagged
-        description = check_wallet_address(address, unique_addresses, flagged_addresses)
-        classification = 'fail' if 'Flagged' in description else 'pass'
-
-        # Transform data
         transformed_data = {
             'address': address,
-            'transactions': [{
-                'transactionHash': tx['hash'],
-                'timestamp': int(tx['timeStamp']),
-                'from': tx['from'],
-                'to': tx['to'],
-                'value': int(tx['value']) / 1e18,  # Convert from Wei to Ether
-                'gasUsed': tx['gasUsed'],
-                'status': 'Success' if tx['txreceipt_status'] == '1' else 'Failed',
-                'description': description if tx['to'].lower() in unique_addresses or tx['from'].lower() in unique_addresses else 'Regular transaction',
-                'classification': classification,
-                'insights': {}
-            } for tx in transactions]
-        }
-
-        # Calculate metrics
-        metrics = {
-            "activity_score": calculate_activity_score(transformed_data),
-            "risk_scores": calculate_risk_scores(transformed_data),
-            "opportunity_scores": calculate_opportunity_scores(transformed_data),
-            "trust_scores": calculate_trust_scores(transformed_data),
-            "volatility_scores": calculate_volatility_scores(transformed_data)
+            'transactions': transactions,
+            'internal_transactions': internal_transactions,
+            'token_transfers': token_transfers
         }
 
         return jsonify({
@@ -615,40 +667,61 @@ def get_data_and_metrics():
         logger.error(f"Exception: {e}")
         return jsonify({'error': f'An error occurred: {e}'}), 500
 
-
-# Endpoint to fetch on-chain and off-chain transaction analysis
 @app.route('/api/analyze_transactions', methods=['POST'])
 def analyze_transactions_endpoint():
     try:
         address = request.json.get('address')
-        transactions = get_transaction_history(address)
+        transactions = fetch_transactions(address)
         on_chain_to_off_chain, off_chain_to_on_chain = analyze_transactions(address, transactions)
+        ai_insights = analyze_with_ai(transactions)
         return jsonify({
             'on_chain_to_off_chain': on_chain_to_off_chain,
-            'off_chain_to_on_chain': off_chain_to_on_chain
+            'off_chain_to_on_chain': off_chain_to_on_chain,
+            'ai_insights': ai_insights
         })
     except Exception as e:
         logger.error(f"Exception: {e}")
         return jsonify({'error': f'An error occurred: {e}'}), 500
 
-# Helper function to analyze transactions
 def analyze_transactions(address, transactions):
     on_chain_to_off_chain = {}
     off_chain_to_on_chain = {}
 
     for tx in transactions:
         if tx['from'] == address.lower():
-            # Outgoing transaction
             if tx['to'] not in on_chain_to_off_chain:
                 on_chain_to_off_chain[tx['to']] = 0
             on_chain_to_off_chain[tx['to']] += int(tx['value'])
         elif tx['to'] == address.lower():
-            # Incoming transaction
             if tx['from'] not in off_chain_to_on_chain:
                 off_chain_to_on_chain[tx['from']] = 0
             off_chain_to_on_chain[tx['from']] += int(tx['value'])
 
     return on_chain_to_off_chain, off_chain_to_on_chain
+
+def analyze_with_ai(transactions):
+    try:
+        prompt_content = f"Analyze the following transactions: {json.dumps(transactions, indent=2)}"
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+            },
+            json={
+                'model': 'gpt-3.5-turbo-0125',
+                'messages': [{'role': 'system', 'content': prompt_content}]
+            }
+        )
+        if response.status_code != 200:
+            raise Exception(f"OpenAI API request failed with status {response.status_code}")
+
+        response_data = response.json()
+        return response_data['choices'][0]['message']['content']
+
+    except Exception as e:
+        logger.error(f"Error analyzing with AI: {e}")
+        return "Failed to analyze transactions with AI"
 
 def calculate_activity_score(data):
     transaction_count = len(data['transactions'])

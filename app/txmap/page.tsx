@@ -7,12 +7,12 @@ const FinancialAdvisorPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [rawBlockchainData, setRawBlockchainData] = useState<any>(null);
   const [onChainToOffChain, setOnChainToOffChain] = useState<any>(null);
-  const [offChainToOnChain, setOffChainToOnChain] = useState<any>(null);
+  const [aiInsights, setAiInsights] = useState<any>(null);
 
   const handleFetchRawData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/get_etherscan_data?address=${address}`, {
+      const response = await fetch(`/api/get_data_and_metrics?address=${address}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -38,7 +38,7 @@ const FinancialAdvisorPage: React.FC = () => {
       });
       const data = await response.json();
       setOnChainToOffChain(data.on_chain_to_off_chain);
-      setOffChainToOnChain(data.off_chain_to_on_chain);
+      setAiInsights(data.ai_insights);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -71,7 +71,7 @@ const FinancialAdvisorPage: React.FC = () => {
           </div>
         )}
       </div>
-      {onChainToOffChain && offChainToOnChain && (
+      {onChainToOffChain && aiInsights && (
         <div className="section w-full max-w-4xl mb-8">
           <h2 className="text-2xl font-bold mb-4">On-Chain/Off-Chain Transaction Analysis</h2>
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -82,9 +82,9 @@ const FinancialAdvisorPage: React.FC = () => {
               </pre>
             </div>
             <div>
-              <h3 className="text-xl font-bold mb-2">Off-Chain to On-Chain</h3>
+              <h3 className="text-xl font-bold mb-2">AI Insights</h3>
               <pre className="bg-gray-100 p-4 rounded-md text-black text-left overflow-auto">
-                {JSON.stringify(offChainToOnChain, null, 2)}
+                {JSON.stringify(aiInsights, null, 2)}
               </pre>
             </div>
           </div>

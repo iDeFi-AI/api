@@ -78,8 +78,8 @@ const SmartContractAnalyzer: React.FC = () => {
 
       <div className="flex flex-col md:flex-row items-center w-full max-w-xl mb-6">
         <input type="file" accept=".sol" onChange={handleFileChange} className="mb-4 md:mb-0 md:mr-4" />
-        <button onClick={handleAnalyzeFile} className="bg-blue-500 text-white p-3 rounded-md w-full md:w-auto">
-          Analyze File
+        <button onClick={handleAnalyzeFile} className="bg-neorange text-white p-3 rounded-md w-full md:w-auto">
+          Analyze 
         </button>
       </div>
 
@@ -91,8 +91,8 @@ const SmartContractAnalyzer: React.FC = () => {
           placeholder="Enter smart contract address"
           className="p-3 border rounded-md w-full mb-4 md:mb-0 md:mr-4 text-black"
         />
-        <button onClick={handleAnalyzeAddress} className="bg-blue-500 text-white p-3 rounded-md w-full md:w-auto">
-          Analyze Address
+        <button onClick={handleAnalyzeAddress} className="bg-neorange text-white p-3 rounded-md w-full md:w-auto">
+          Analyze 
         </button>
       </div>
 

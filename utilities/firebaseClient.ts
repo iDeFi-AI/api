@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signInAnonymously, GoogleAuthProvider, GithubAuthProvider, signInWithCustomToken } from 'firebase/auth';
 import { getDatabase, ref, set, child, get, remove, push, onValue } from 'firebase/database';
 import Web3 from 'web3';
+import { isAddress } from 'web3-validator';
 
 // Extend the Window interface to include the ethereum property
 declare global {
@@ -34,6 +35,7 @@ const githubProvider = new GithubAuthProvider();
 // Sign-in functions
 const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 const signInWithGithub = () => signInWithPopup(auth, githubProvider);
+const signInAnonymouslyWithFirebase = () => signInAnonymously(auth);
 
 // Set persistence
 setPersistence(auth, browserLocalPersistence)
@@ -52,16 +54,41 @@ const signInWithEmailPassword = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password);
 
 // Web3 Authentication
-const web3 = new Web3(Web3.givenProvider || "ws://localhost:8545");
-
 const signInWithWeb3 = async () => {
   if (window.ethereum) {
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const account = accounts[0];
+      if (!isAddress(account)) {
+        throw new Error('Invalid Ethereum address');
+      }
       const message = 'Log in to iDeFi.AI';
-      const signature = await web3.eth.personal.sign(message, account, '');
-      return { account, signature };
+      const web3 = new Web3(window.ethereum);
+      const signature = await web3.eth.personal.sign(web3.utils.utf8ToHex(message), account, '');
+
+      // Sign in anonymously with Firebase if not already signed in
+      if (!auth.currentUser) {
+        await signInAnonymouslyWithFirebase();
+      }
+
+      // Fetch custom token from your backend
+      const response = await fetch('/api/generate_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: account })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate token');
+      }
+
+      const data = await response.json();
+      const customToken = data.token;
+
+      // Sign in with the custom token
+      await signInWithCustomToken(auth, customToken);
+
+      return { user: { account }, signature };
     } catch (error) {
       console.error('Error signing in with Web3', error);
       throw error;
@@ -104,6 +131,7 @@ export {
   signInWithGoogle,
   signInWithGithub,
   signInWithWeb3,
+  signInAnonymouslyWithFirebase as signInAnonymously,
   storeApiToken,
   storeApiKey,
   storeJsonData,
