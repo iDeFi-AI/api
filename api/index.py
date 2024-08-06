@@ -17,7 +17,7 @@ import requests
 
 load_dotenv()
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["https://api.idefi.api", "https://idefi-ai-api.vercel.app", "https://q.idefi.ai"]}})
+CORS(app, resources={r"/api/*": {"origins": ["https://api.idefi.api", "https://idefi-ai-api.vercel.app", "https://q.idefi.ai", "https://mup-nine.vercel.app"]}})
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
