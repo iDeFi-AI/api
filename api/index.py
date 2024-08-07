@@ -275,6 +275,36 @@ def check_wallet_address_endpoint():
 
         return jsonify(results)
 
+# Endpoint for checking multiple wallet addresses
+@app.route('/api/check_multiple_addresses', methods=['GET', 'POST'])
+def check_multiple_addresses():
+    data = request.get_json()
+    addresses = data.get('addresses', [])
+    if not addresses:
+        return jsonify({'error': 'Addresses parameter is required'}), 400
+
+    unique_addresses = load_unique_addresses()
+    flagged_addresses = load_flagged_addresses()
+    results = []
+
+    for address in addresses:
+        status, description = check_address_status(address, unique_addresses, flagged_addresses)
+        results.append({
+            'address': address,
+            'status': status,
+            'description': description
+        })
+
+    return jsonify(results)
+
+def check_address_status(address, unique_addresses, flagged_addresses):
+    lower_address = address.lower()
+    if lower_address in flagged_addresses:
+        return 'Fail', 'Flagged for suspicious activities'
+    elif lower_address in unique_addresses:
+        return 'Fail', 'Address on watch list'
+    return 'Pass', 'No issues found'       
+
 # Helper function to clean and validate addresses
 def clean_and_validate_addresses(addresses):
     cleaned_addresses = []
@@ -285,6 +315,49 @@ def clean_and_validate_addresses(addresses):
                 cleaned_addresses.append(address)
     return cleaned_addresses
 
+@app.route('/api/transaction_summary', methods=['GET'])
+def transaction_summary():
+    address = request.args.get('address')
+    if not address:
+        return jsonify({'error': 'Address parameter is required'}), 400
+
+    # Load unique and flagged addresses
+    unique_addresses = load_unique_addresses()
+    flagged_addresses = load_flagged_addresses()
+
+    # Fetch transaction history
+    transactions = fetch_transactions(address)
+    if not transactions:
+        return jsonify({'error': 'No transactions found'}), 404
+
+    # Analyze transactions
+    summary = analyze_transactions_with_flagged_addresses(transactions, unique_addresses, flagged_addresses)
+
+    return jsonify(summary)
+
+def analyze_transactions_with_flagged_addresses(transactions, unique_addresses, flagged_addresses):
+    flagged_interactions = []
+    risky_transactions_count = 0
+    total_value = 0
+    dates_involved = set()
+
+    for tx in transactions:
+        if tx['to'].lower() in flagged_addresses or tx['from'].lower() in flagged_addresses:
+            flagged_interactions.append(tx)
+            risky_transactions_count += 1
+            total_value += float(tx['value']) / 1e18
+            timestamp = datetime.datetime.fromtimestamp(int(tx['timeStamp']))
+            dates_involved.add(timestamp.strftime('%Y-%m-%d'))
+
+    summary = {
+        'number_of_interactions_with_flagged_addresses': len(flagged_interactions),
+        'number_of_risky_transactions': risky_transactions_count,
+        'total_value': total_value,
+        'all_dates_involved': list(dates_involved)
+    }
+
+    return summary
+    
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
