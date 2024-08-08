@@ -349,7 +349,7 @@ def analyze_transactions_with_flagged_addresses(transactions, unique_addresses, 
 
     return summary
 
-@app.route('/api/transaction_summary', methods=['GET,' 'POST'])
+@app.route('/api/transaction_summary', methods=['GET', 'POST'])
 def transaction_summary():
     address = request.args.get('address')
     if not address:
