@@ -93,25 +93,16 @@ def load_unique_addresses():
                     unique_addresses.add(address.lower())
     return unique_addresses
 
-# Example logic adjustment in the backend
+# Function to check wallet address against unique addresses and flagged addresses
 def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
     wallet_address_lower = wallet_address.lower()
-    if is_address_flagged(wallet_address, flagged_addresses):
-        return {
-            'status': 'Fail',
-            'description': 'Flagged: Wallet address found to be involved in illegal activities'
-        }
-    elif wallet_address_lower in unique_addresses:
-        return {
-            'status': 'Fail',
-            'description': 'Flagged: Wallet address found in OFAC sanction list'
-        }
-    else:
-        return {
-            'status': 'Pass',
-            'description': 'Not Flagged'
-        }
+    description = 'Not Flagged'
 
+    if is_address_flagged(wallet_address, flagged_addresses):
+        description = 'Flagged: Wallet address found to be involved in illegal activities'
+    elif wallet_address_lower in unique_addresses:
+        description = 'Flagged: Wallet address found in OFAC sanction list'
+    return description
 
 # Function to get etherscan details if address is flagged
 def get_etherscan_details(wallet_address, unique_addresses):
@@ -299,10 +290,8 @@ def check_multiple_addresses():
 
         for address in addresses:
             description = check_wallet_address(address, unique_addresses, flagged_addresses)
-            status = 'Fail' if 'Flagged' in description else 'Pass'
             results.append({
                 'address': address,
-                'status': status,
                 'description': description
             })
 
@@ -330,7 +319,6 @@ def clean_and_validate_addresses(addresses):
     return cleaned_addresses
 
 
-# Function to analyze transactions with flagged addresses
 def analyze_transactions_with_flagged_addresses(transactions, unique_addresses, flagged_addresses):
     flagged_interactions = []
     risky_transactions_count = 0
@@ -341,6 +329,7 @@ def analyze_transactions_with_flagged_addresses(transactions, unique_addresses, 
         from_address = tx['from'].lower()
         to_address = tx['to'].lower()
 
+        # Use the check_wallet_address function for both from and to addresses
         from_description = check_wallet_address(from_address, unique_addresses, flagged_addresses)
         to_description = check_wallet_address(to_address, unique_addresses, flagged_addresses)
 
