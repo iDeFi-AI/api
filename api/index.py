@@ -93,29 +93,23 @@ def load_unique_addresses():
                     unique_addresses.add(address.lower())
     return unique_addresses
 
+# Function to check wallet address against unique addresses and flagged addresses
 def check_wallet_address(wallet_address, unique_addresses, flagged_addresses, transactions):
     wallet_address_lower = wallet_address.lower()
-    description = 'Not Flagged'
-    status = 'Pass'
+    description = 'Pass: Not Flagged'
 
-    # Check if the address is directly flagged
     if is_address_flagged(wallet_address, flagged_addresses):
-        description = 'Flagged: Wallet address found to be involved in illegal activities'
-        status = 'Fail'
+        description = 'Fail: Flagged wallet address found to be involved in illegal activities'
     elif wallet_address_lower in unique_addresses:
-        description = 'Flagged: Wallet address found in OFAC sanction list'
-        status = 'Fail'
-    else:
-        # Analyze transactions to determine if any are involved with flagged addresses
-        for tx in transactions:
-            if tx['from'].lower() in flagged_addresses or tx['to'].lower() in flagged_addresses:
-                description = 'Flagged: Transactions with flagged addresses detected'
-                status = 'Fail'
-                break
+        description = 'Fail: Flagged wallet address found in OFAC sanction list'
 
-    return description, status
+    # Analyze transactions if provided
+    if transactions:
+        flagged_count = sum(1 for tx in transactions if tx['to'].lower() in flagged_addresses or tx['from'].lower() in flagged_addresses)
+        if flagged_count > 0:
+            description += f" with {flagged_count} flagged transactions."
 
-
+    return description
 
 # Function to get etherscan details if address is flagged
 def get_etherscan_details(wallet_address, unique_addresses):
@@ -216,6 +210,7 @@ def protected_endpoint():
     # Perform actions for the protected endpoint
     return jsonify({'message': 'Access granted'})
 
+# Endpoint for checking wallet address
 @app.route('/api/checkaddress', methods=['GET', 'POST'])
 def check_wallet_address_endpoint():
     if request.method == 'GET':
@@ -230,14 +225,13 @@ def check_wallet_address_endpoint():
         # Fetch transaction history
         transactions = fetch_transactions(address)
 
-        description, status = check_wallet_address(address, unique_addresses, flagged_addresses, transactions)
+        description = check_wallet_address(address, unique_addresses, flagged_addresses, transactions)
         if 'Flagged' in description:
             description += get_etherscan_details(address, unique_addresses)
 
         response_data = {
             'address': address,
-            'description': description,
-            'status': status
+            'description': description
         }
 
         return jsonify(response_data)
@@ -256,11 +250,11 @@ def check_wallet_address_endpoint():
         for address in addresses:
             # Fetch transaction history
             transactions = fetch_transactions(address)
-            
-            description, status = check_wallet_address(address, unique_addresses, flagged_addresses, transactions)
+
+            description = check_wallet_address(address, unique_addresses, flagged_addresses, transactions)
             if 'Flagged' in description:
                 description += get_etherscan_details(address, unique_addresses)
-            results.append({'address': address, 'description': description, 'status': status})
+            results.append({'address': address, 'description': description})
 
         # Call GenAI to analyze the results and get insights
         prompt_content = {
@@ -293,7 +287,6 @@ def check_wallet_address_endpoint():
             return jsonify({'error': 'Failed to analyze with GenAI'}), 500
 
         return jsonify(results)
-
 
 # Endpoint for checking multiple wallet addresses
 @app.route('/api/check_multiple_addresses', methods=['POST'])
