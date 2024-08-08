@@ -203,7 +203,6 @@ def protected_endpoint():
     # Perform actions for the protected endpoint
     return jsonify({'message': 'Access granted'})
 
-# Endpoint for checking wallet address
 @app.route('/api/checkaddress', methods=['GET', 'POST'])
 def check_wallet_address_endpoint():
     if request.method == 'GET':
@@ -216,11 +215,13 @@ def check_wallet_address_endpoint():
         flagged_addresses = load_flagged_addresses()
 
         description = check_wallet_address(address, unique_addresses, flagged_addresses)
-        if 'Flagged' in description:
+        status = 'Pass' if 'Not Flagged' in description else 'Fail'
+        if status == 'Fail':
             description += get_etherscan_details(address, unique_addresses)
 
         response_data = {
             'address': address,
+            'status': status,
             'description': description
         }
 
