@@ -94,21 +94,14 @@ def load_unique_addresses():
     return unique_addresses
 
 # Function to check wallet address against unique addresses and flagged addresses
-def check_wallet_address(wallet_address, unique_addresses, flagged_addresses, transactions):
+def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
     wallet_address_lower = wallet_address.lower()
-    description = 'Pass: Not Flagged'
+    description = 'Not Flagged'
 
     if is_address_flagged(wallet_address, flagged_addresses):
-        description = 'Fail: Flagged wallet address found to be involved in illegal activities'
+        description = 'Flagged: Wallet address found to be involved in illegal activities'
     elif wallet_address_lower in unique_addresses:
-        description = 'Fail: Flagged wallet address found in OFAC sanction list'
-
-    # Analyze transactions if provided
-    if transactions:
-        flagged_count = sum(1 for tx in transactions if tx['to'].lower() in flagged_addresses or tx['from'].lower() in flagged_addresses)
-        if flagged_count > 0:
-            description += f" with {flagged_count} flagged transactions."
-
+        description = 'Flagged: Wallet address found in OFAC sanction list'
     return description
 
 # Function to get etherscan details if address is flagged
@@ -222,10 +215,7 @@ def check_wallet_address_endpoint():
         unique_addresses = load_unique_addresses()
         flagged_addresses = load_flagged_addresses()
 
-        # Fetch transaction history
-        transactions = fetch_transactions(address)
-
-        description = check_wallet_address(address, unique_addresses, flagged_addresses, transactions)
+        description = check_wallet_address(address, unique_addresses, flagged_addresses)
         if 'Flagged' in description:
             description += get_etherscan_details(address, unique_addresses)
 
@@ -248,10 +238,7 @@ def check_wallet_address_endpoint():
         results = []
 
         for address in addresses:
-            # Fetch transaction history
-            transactions = fetch_transactions(address)
-
-            description = check_wallet_address(address, unique_addresses, flagged_addresses, transactions)
+            description = check_wallet_address(address, unique_addresses, flagged_addresses)
             if 'Flagged' in description:
                 description += get_etherscan_details(address, unique_addresses)
             results.append({'address': address, 'description': description})
