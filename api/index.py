@@ -99,52 +99,67 @@ def check_wallet_address(wallet_address, unique_addresses, flagged_addresses):
     description = 'Not Flagged'
 
     if is_address_flagged(wallet_address, flagged_addresses):
-        description = 'Flagged: Wallet address found to be involved in illegal activities'
+        description = 'Flagged: Wallet address found to be involved in mixer related activities'
     elif wallet_address_lower in unique_addresses:
         description = 'Flagged: Wallet address found in OFAC sanction list'
     return description
 
-# Function to get etherscan details if address is flagged
 def get_etherscan_details(wallet_address, unique_addresses):
-    details = ""
     try:
+        details = []
+
+        def fetch_transactions(url):
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('result', [])
+            return []
+
         # Regular transactions
-        regular_tx_url = f'https://api.etherscan.io/api?module=account&action=txlist&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
-        regular_tx_response = requests.get(regular_tx_url)
-        if regular_tx_response.status_code == 200:
-            regular_tx_data = regular_tx_response.json()
-            if 'result' in regular_tx_data:
-                transactions = regular_tx_data['result']
-                for tx in transactions:
-                    if tx['to'].lower() in unique_addresses or tx['from'].lower() in unique_addresses:
-                        details += f"\nInvolved in Mixer/Tornado transaction with {tx['to']}"
-                        details += f"\nTransaction Hash: {tx['hash']}"
-                        details += f"\nFrom: {tx['from']}"
-                        details += f"\nTo: {tx['to']}"
-                        details += f"\nParent Txn Hash: {tx['hash']}"
-                        details += f"\nEtherscan URL: https://etherscan.io/tx/{tx['hash']}"
-                        break  # Stop searching on first match
+        regular_tx_url = (
+            f'https://api.etherscan.io/api?module=account&action=txlist&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
+        )
+        regular_transactions = fetch_transactions(regular_tx_url)
 
         # Internal transactions
-        internal_tx_url = f'https://api.etherscan.io/api?module=account&action=txlistinternal&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
-        internal_tx_response = requests.get(internal_tx_url)
-        if internal_tx_response.status_code == 200:
-            internal_tx_data = internal_tx_response.json()
-            if 'result' in internal_tx_data:
-                internal_transactions = internal_tx_data['result']
-                for int_tx in internal_transactions:
-                    if int_tx['to'].lower() in unique_addresses or int_tx['from'].lower() in unique_addresses:
-                        details += f"\nInvolved in internal Mixer/Tornado transaction with {int_tx['to']}"
-                        details += f"\nTransaction Hash: {int_tx['hash']}"
-                        details += f"\nFrom: {int_tx['from']}"
-                        details += f"\nTo: {int_tx['to']}"
-                        details += f"\nParent Txn Hash: {int_tx['hash']}"
-                        details += f"\nEtherscan URL: https://etherscan.io/tx/{int_tx['hash']}"
-                        break  # Stop searching on first match
+        internal_tx_url = (
+            f'https://api.etherscan.io/api?module=account&action=txlistinternal&address={wallet_address}&apikey={ETHERSCAN_API_KEY}'
+        )
+        internal_transactions = fetch_transactions(internal_tx_url)
+
+        # Function to process transactions
+        def process_transactions(transactions, tx_type):
+            for tx in transactions:
+                if tx['to'].lower() in unique_addresses or tx['from'].lower() in unique_addresses:
+                    details.append({
+                        'transaction_type': tx_type,
+                        'transaction_hash': tx['hash'],
+                        'from': tx['from'],
+                        'to': tx['to'],
+                        'etherscan_url': f"https://etherscan.io/tx/{tx['hash']}"
+                    })
+                    break  # Stop searching on first match
+
+        # Process both regular and internal transactions
+        process_transactions(regular_transactions, 'Regular')
+        process_transactions(internal_transactions, 'Internal')
+
+        if details:
+            formatted_details = "\n".join(
+                [f"Involved in {tx['transaction_type']} Mixer/Tornado transaction with {tx['to']}\n"
+                 f"Transaction Hash: {tx['transaction_hash']}\n"
+                 f"From: {tx['from']}\n"
+                 f"To: {tx['to']}\n"
+                 f"Etherscan URL: {tx['etherscan_url']}\n"
+                 for tx in details]
+            )
+            return formatted_details
+        else:
+            return "No relevant transactions found."
+
     except Exception as e:
         logger.error(f"Error fetching data from Etherscan API: {e}")
-
-    return details
+        return "Error retrieving transaction details."
 
 # Middleware to log the endpoint being called
 @app.before_request
