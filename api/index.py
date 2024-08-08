@@ -306,8 +306,10 @@ def check_multiple_addresses():
 
         for address in addresses:
             description = check_wallet_address(address, unique_addresses, flagged_addresses)
+            status = 'Pass' if 'Not Flagged' in description else 'Fail'
             results.append({
                 'address': address,
+                'status': status,
                 'description': description
             })
 
@@ -338,29 +340,28 @@ def clean_and_validate_addresses(addresses):
 def analyze_transactions_with_flagged_addresses(transactions, unique_addresses, flagged_addresses):
     flagged_interactions = []
     risky_transactions_count = 0
-    total_value = 0
+    total_value = 0.0
     dates_involved = set()
 
     for tx in transactions:
-        from_address = tx['from'].lower()
-        to_address = tx['to'].lower()
+        # Check both sender and receiver addresses against flagged and unique addresses
+        from_flagged = is_address_flagged(tx['from'], flagged_addresses) or tx['from'].lower() in unique_addresses
+        to_flagged = is_address_flagged(tx['to'], flagged_addresses) or tx['to'].lower() in unique_addresses
 
-        # Use the check_wallet_address function for both from and to addresses
-        from_description = check_wallet_address(from_address, unique_addresses, flagged_addresses)
-        to_description = check_wallet_address(to_address, unique_addresses, flagged_addresses)
-
-        if 'Flagged' in from_description or 'Flagged' in to_description:
+        # Consider transaction flagged if either address is flagged
+        if from_flagged or to_flagged:
             flagged_interactions.append(tx)
             risky_transactions_count += 1
-            total_value += float(tx['value']) / 1e18
-            timestamp = datetime.datetime.fromtimestamp(int(tx['timeStamp']))
-            dates_involved.add(timestamp.strftime('%Y-%m-%d'))
+            total_value += float(tx['value'])
+            # Add date to the set of involved dates
+            date = datetime.datetime.fromtimestamp(int(tx['timeStamp'])).strftime('%Y-%m-%d')
+            dates_involved.add(date)
 
     summary = {
         'number_of_interactions_with_flagged_addresses': len(flagged_interactions),
         'number_of_risky_transactions': risky_transactions_count,
         'total_value': total_value,
-        'all_dates_involved': list(dates_involved)
+        'all_dates_involved': sorted(list(dates_involved))
     }
 
     return summary
